@@ -36,6 +36,12 @@ spring.datasource.password=your_password
 
 The API starts on http://localhost:8080.
 
+## API documentation
+
+With the app running, open http://localhost:8080/swagger-ui.html to see every
+endpoint and try requests from the browser. The raw OpenAPI description is at
+http://localhost:8080/v3/api-docs.
+
 ## Tests
 
 ```bash
