@@ -22,7 +22,7 @@ error comes back with a clear message.
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **107 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
+- **117 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
 
 ## Tech stack
 
@@ -100,6 +100,19 @@ On first start, when there are no users, an `admin` account is created with the 
 |---|---|
 | `APP_JWT_SECRET` | Signs the tokens, at least 32 bytes. If unset, a random key is used and tokens stop working after a restart (development only). |
 | `APP_ADMIN_PASSWORD` | Password of the first `admin` account. |
+
+### Roles
+
+| | `ADMIN` | `CASHIER` |
+|---|---|---|
+| Read products, customers, sales | yes | yes |
+| Register and update customers | yes | yes |
+| Create sales and add items | yes | yes |
+| Create, update or delete products (prices, stock) | yes | no |
+| Delete customers, sales or sale items | yes | no |
+| Manage user accounts | yes | no |
+
+Anything not listed as open to cashiers is admin-only by default, including endpoints added later.
 
 ### Lists: pagination, search and sorting
 
@@ -248,7 +261,7 @@ src/main/resources/db/migration
 - [x] Flyway database migrations
 - [x] Docker Compose
 - [x] JWT authentication with `ADMIN` / `CASHIER` roles
-- [ ] Per-role access rules for products, customers and sales
+- [x] Per-role access rules for products, customers and sales
 - [ ] Stock movement history and low-stock alerts
 - [ ] Sales reports and CSV/PDF export
 - [ ] Live demo

@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -52,7 +53,19 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // Only admins manage user accounts
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
-                        // Everything else needs a valid token
+
+                        // What each role may do (the table is in RoleAccessTests). Rules are checked
+                        // from top to bottom and the first one that matches decides.
+                        // Both roles can read everything
+                        .requestMatchers(HttpMethod.GET, "/api/**").hasAnyRole("ADMIN", "CASHIER")
+                        // A cashier registers customers and records sales at the till
+                        .requestMatchers(HttpMethod.POST, "/api/customers", "/api/sales", "/api/sale-items")
+                                .hasAnyRole("ADMIN", "CASHIER")
+                        .requestMatchers(HttpMethod.PUT, "/api/customers/*").hasAnyRole("ADMIN", "CASHIER")
+                        // Everything else under /api is for admins: products, prices, stock and every
+                        // delete. Deny by default: a new endpoint stays admin-only until a rule above opens it.
+                        .requestMatchers("/api/**").hasRole("ADMIN")
+                        // Anything outside /api still needs a valid token
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))

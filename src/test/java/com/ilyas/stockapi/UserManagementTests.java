@@ -77,6 +77,21 @@ class UserManagementTests {
 				.andExpect(status().isForbidden());
 	}
 
+	// The role written in the token at login is what the access rules check
+	@Test
+	void cashierTokenIsLimitedToTheCashierRole() throws Exception {
+		asAdmin(post("/api/users"), CASHIER).andExpect(status().isCreated());
+		String cashier = "Bearer " + tokenFor("sara", "sara-password-1");
+
+		mockMvc.perform(get("/api/products").header("Authorization", cashier)).andExpect(status().isOk());
+		mockMvc.perform(post("/api/customers").header("Authorization", cashier)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Youssef\"}"))
+				.andExpect(status().isCreated());
+		mockMvc.perform(post("/api/products").header("Authorization", cashier)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Cable\",\"price\":49.90}"))
+				.andExpect(status().isForbidden());
+	}
+
 	@Test
 	void usernameMustBeUnique() throws Exception {
 		asAdmin(post("/api/users"), CASHIER).andExpect(status().isCreated());
