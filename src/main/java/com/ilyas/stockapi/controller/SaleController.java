@@ -3,7 +3,6 @@ package com.ilyas.stockapi.controller;
 import com.ilyas.stockapi.entity.Sale;
 import com.ilyas.stockapi.repository.SaleRepository;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -14,8 +13,11 @@ import java.util.List;
 @RequestMapping("/api/sales")
 public class SaleController {
 
-    @Autowired
-    private SaleRepository saleRepository;
+    private final SaleRepository saleRepository;
+
+    public SaleController(SaleRepository saleRepository) {
+        this.saleRepository = saleRepository;
+    }
 
     @GetMapping
     public List<Sale> getAll() {
