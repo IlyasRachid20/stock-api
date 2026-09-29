@@ -14,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -67,6 +69,20 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<Object> handleBadRequest(BadRequestException ex) {
         return error(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    // Failed login (wrong username or password, disabled account): one message for all,
+    // so the response doesn't reveal which usernames exist
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<Object> handleAuthentication(AuthenticationException ex) {
+        return error(HttpStatus.UNAUTHORIZED, "Invalid username or password");
+    }
+
+    // Access checks done inside a controller or service (the URL rules in SecurityConfig
+    // answer 403 themselves, before the request gets here)
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex) {
+        return error(HttpStatus.FORBIDDEN, "Access denied: your role is not allowed to do this");
     }
 
     // ?sort=unknownField returns 400 instead of a 500

@@ -76,6 +76,7 @@ jobs:
           grep -qx "1 BASELINE" history.txt
           grep -qx "2 SQL" history.txt
           grep -qx "3 SQL" history.txt
+          grep -qx "4 SQL" history.txt
 
   # Builds the Docker image and starts the full stack with Docker Compose,
   # then sends real requests to check it works end to end.
@@ -86,15 +87,23 @@ jobs:
 
       - name: Start app and database
         run: docker compose up --build --detach --wait --wait-timeout 180
+        env:
+          APP_ADMIN_PASSWORD: ci-admin-password
+          APP_JWT_SECRET: ci-only-jwt-secret-with-at-least-32-bytes
 
       - name: Smoke test the running API
         run: |
           curl -fsS http://localhost:8080/actuator/health | grep -q '"status":"UP"'
-          curl -fsS -X POST http://localhost:8080/api/products \
+          # Without a token the API refuses the request
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/products)" = 401
+          TOKEN=$(curl -fsS -X POST http://localhost:8080/api/auth/login \
             -H "Content-Type: application/json" \
+            -d '{"username":"admin","password":"ci-admin-password"}' | jq -r .accessToken)
+          curl -fsS -X POST http://localhost:8080/api/products \
+            -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
             -d '{"name":"Galaxy S26","price":9500.00,"quantity":10}' | tee product.json
           grep -q '"name":"Galaxy S26"' product.json
-          curl -fsS "http://localhost:8080/api/products?search=galaxy" | grep -q '"totalElements":1'
+          curl -fsS -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/products?search=galaxy" | grep -q '"totalElements":1'
           curl -fsS -o /dev/null http://localhost:8080/swagger-ui/index.html
 
       - name: Show logs if something failed
