@@ -28,7 +28,8 @@ services:
     ports:
       - "${APP_PORT:-8080}:8080"
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /actuator/health HTTP/1.0\r\n\r\n' >&3 && grep -q UP <&3"]
+      # The JRE image has no curl; bash can open the HTTP connection itself (plain sh can't)
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /actuator/health HTTP/1.0\r\n\r\n' >&3 && grep -q UP <&3"]
       interval: 10s
       timeout: 5s
       retries: 12
