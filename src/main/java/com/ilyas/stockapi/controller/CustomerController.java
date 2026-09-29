@@ -2,6 +2,7 @@ package com.ilyas.stockapi.controller;
 
 import com.ilyas.stockapi.entity.Customer;
 import com.ilyas.stockapi.repository.CustomerRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -28,12 +29,12 @@ public class CustomerController {
     }
 
     @PostMapping
-    public Customer create(@RequestBody Customer customer) {
+    public Customer create(@Valid @RequestBody Customer customer) {
         return customerRepository.save(customer);
     }
 
     @PutMapping("/{id}")
-    public Customer update(@PathVariable Long id, @RequestBody Customer customer) {
+    public Customer update(@PathVariable Long id, @Valid @RequestBody Customer customer) {
         if (!customerRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }

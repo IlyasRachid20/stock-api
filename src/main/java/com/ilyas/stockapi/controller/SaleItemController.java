@@ -2,6 +2,7 @@ package com.ilyas.stockapi.controller;
 
 import com.ilyas.stockapi.entity.SaleItem;
 import com.ilyas.stockapi.repository.SaleItemRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -28,7 +29,7 @@ public class SaleItemController {
     }
 
     @PostMapping
-    public SaleItem create(@RequestBody SaleItem saleItem) {
+    public SaleItem create(@Valid @RequestBody SaleItem saleItem) {
         return saleItemRepository.save(saleItem);
     }
 
