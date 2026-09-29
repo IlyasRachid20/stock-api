@@ -18,7 +18,7 @@ error comes back with a clear message.
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **66 automated tests** run on every pull request with GitHub Actions.
+- **69 automated tests** run on every pull request with GitHub Actions.
 
 ## Tech stack
 

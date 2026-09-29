@@ -12,4 +12,6 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, Long> {
     List<SaleItem> findBySaleId(Long saleId);
 
     Page<SaleItem> findBySaleId(Long saleId, Pageable pageable);
+
+    long countByProductId(Long productId);
 }

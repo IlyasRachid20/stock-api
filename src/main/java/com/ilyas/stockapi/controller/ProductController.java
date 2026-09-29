@@ -4,6 +4,7 @@ import com.ilyas.stockapi.dto.ProductRequest;
 import com.ilyas.stockapi.dto.ProductResponse;
 import com.ilyas.stockapi.entity.Product;
 import com.ilyas.stockapi.repository.ProductRepository;
+import com.ilyas.stockapi.repository.SaleItemRepository;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
@@ -18,9 +19,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class ProductController {
 
     private final ProductRepository productRepository;
+    private final SaleItemRepository saleItemRepository;
 
-    public ProductController(ProductRepository productRepository) {
+    public ProductController(ProductRepository productRepository, SaleItemRepository saleItemRepository) {
         this.productRepository = productRepository;
+        this.saleItemRepository = saleItemRepository;
     }
 
     // GET /api/products?search=galaxy&page=0&size=20&sort=price,desc
@@ -62,7 +65,13 @@ public class ProductController {
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
-        productRepository.delete(findOrThrow(id));
+        Product product = findOrThrow(id);
+        long sold = saleItemRepository.countByProductId(id);
+        if (sold > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Product '" + product.getName()
+                    + "' cannot be deleted: it appears in " + sold + " sale item(s)");
+        }
+        productRepository.delete(product);
     }
 
     private Product findOrThrow(Long id) {
