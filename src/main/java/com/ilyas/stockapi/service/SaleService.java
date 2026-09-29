@@ -5,6 +5,7 @@ import com.ilyas.stockapi.dto.SaleItemResponse;
 import com.ilyas.stockapi.dto.SaleRequest;
 import com.ilyas.stockapi.dto.SaleResponse;
 import com.ilyas.stockapi.entity.Customer;
+import com.ilyas.stockapi.entity.MovementType;
 import com.ilyas.stockapi.entity.Product;
 import com.ilyas.stockapi.entity.Sale;
 import com.ilyas.stockapi.entity.SaleItem;
@@ -32,13 +33,16 @@ public class SaleService {
     private final SaleItemRepository saleItemRepository;
     private final CustomerRepository customerRepository;
     private final ProductRepository productRepository;
+    private final StockMovementService stockMovements;
 
     public SaleService(SaleRepository saleRepository, SaleItemRepository saleItemRepository,
-                       CustomerRepository customerRepository, ProductRepository productRepository) {
+                       CustomerRepository customerRepository, ProductRepository productRepository,
+                       StockMovementService stockMovements) {
         this.saleRepository = saleRepository;
         this.saleItemRepository = saleItemRepository;
         this.customerRepository = customerRepository;
         this.productRepository = productRepository;
+        this.stockMovements = stockMovements;
     }
 
     public Page<SaleResponse> findSales(Long customerId, Pageable pageable) {
@@ -103,7 +107,9 @@ public class SaleService {
         item.setSale(sale);
         item.setProduct(product);
         sale.getItems().add(item);
-        return SaleItemResponse.from(saleItemRepository.save(item));
+        saleItemRepository.save(item);
+        stockMovements.record(product, MovementType.SALE, -request.quantity(), "Sale " + sale.getId(), item.getId());
+        return SaleItemResponse.from(item);
     }
 
     @Transactional
@@ -117,5 +123,7 @@ public class SaleService {
     private void returnToStock(SaleItem item) {
         Product product = productRepository.findByIdForUpdate(item.getProduct().getId()).orElseThrow();
         product.setQuantity(product.getQuantity() + item.getQuantity());
+        stockMovements.record(product, MovementType.SALE_CANCELLED, item.getQuantity(),
+                "Sale " + item.getSale().getId() + " item deleted", item.getId());
     }
 }

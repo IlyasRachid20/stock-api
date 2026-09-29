@@ -9,6 +9,7 @@ import com.ilyas.stockapi.repository.CustomerRepository;
 import com.ilyas.stockapi.repository.ProductRepository;
 import com.ilyas.stockapi.repository.SaleItemRepository;
 import com.ilyas.stockapi.repository.SaleRepository;
+import com.ilyas.stockapi.repository.StockMovementRepository;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,9 @@ class SaleTotalFromDatabaseTests {
 	private SaleItemRepository saleItemRepository;
 
 	@Autowired
+	private StockMovementRepository stockMovementRepository;
+
+	@Autowired
 	private SaleRepository saleRepository;
 
 	@Autowired
@@ -46,6 +50,7 @@ class SaleTotalFromDatabaseTests {
 
 	@AfterEach
 	void cleanUp() {
+		stockMovementRepository.deleteAll();
 		saleItemRepository.deleteAll();
 		saleRepository.deleteAll();
 		productRepository.deleteAll();
