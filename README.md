@@ -11,6 +11,7 @@ error comes back with a clear message.
 
 ## Highlights
 
+- **Secure by default:** every endpoint needs a JWT from `POST /api/auth/login`; passwords are stored as BCrypt hashes; `ADMIN` and `CASHIER` roles.
 - **Stock always in sync:** selling an item takes it out of stock; deleting an item or a whole sale puts it back.
 - **No overselling, even under load:** the product row is locked while its stock changes (by a sale or a product update), so two requests at the same moment can't both take the last unit or overwrite each other's stock.
 - **Fast lists:** related rows are loaded in batches, so a page of sales takes at most 5 queries instead of one per sale, item and product (41 before). A test fails if this regresses.
@@ -21,7 +22,7 @@ error comes back with a clear message.
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **87 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
+- **107 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
 
 ## Tech stack
 
@@ -34,6 +35,7 @@ error comes back with a clear message.
 | Tests | JUnit 5, MockMvc, AssertJ |
 | CI | GitHub Actions: tests on H2 and PostgreSQL, plus a Docker Compose smoke test |
 | Packaging | Docker multi-stage image (non-root), Docker Compose |
+| Security | Spring Security 7, JWT (HS256) via the OAuth2 resource server, BCrypt |
 | Build | Maven (wrapper included) |
 
 ## Data model
@@ -75,8 +77,29 @@ erDiagram
 | Products | `GET/POST /api/products` · `GET/PUT/DELETE /api/products/{id}` |
 | Sales | `GET/POST /api/sales` · `GET/DELETE /api/sales/{id}` |
 | Sale items | `GET/POST /api/sale-items` · `GET/DELETE /api/sale-items/{id}` |
+| Auth | `POST /api/auth/login` (public) · `GET /api/auth/me` |
+| Users (`ADMIN` only) | `GET/POST /api/users` · `DELETE /api/users/{id}` |
 
 Full details, request bodies and a **Try it out** button: http://localhost:8080/swagger-ui.html
+
+### Authentication
+
+```http
+POST /api/auth/login
+{"username": "admin", "password": "..."}
+```
+```json
+{"accessToken": "eyJhbGciOiJIUzI1NiJ9...", "tokenType": "Bearer", "expiresIn": 28800}
+```
+
+Send the token on every other request as `Authorization: Bearer <accessToken>`. In Swagger UI, click **Authorize** and paste it. Without a valid token the API answers `401`; with a role that isn't allowed, `403`.
+
+On first start, when there are no users, an `admin` account is created with the password from `APP_ADMIN_PASSWORD`, or a generated one printed once in the logs. The admin then creates the other accounts with `POST /api/users`.
+
+| Setting | Purpose |
+|---|---|
+| `APP_JWT_SECRET` | Signs the tokens, at least 32 bytes. If unset, a random key is used and tokens stop working after a restart (development only). |
+| `APP_ADMIN_PASSWORD` | Password of the first `admin` account. |
 
 ### Lists: pagination, search and sorting
 
@@ -161,7 +184,7 @@ Only [Docker](https://www.docker.com/products/docker-desktop/) is needed: no Jav
 ```bash
 git clone https://github.com/IlyasRachid20/stock-api.git
 cd stock-api
-cp .env.example .env        # then edit the password in .env
+cp .env.example .env        # then set the passwords and APP_JWT_SECRET in .env
 docker compose up --build
 ```
 
@@ -208,12 +231,14 @@ src/main/java/com/ilyas/stockapi
 ├── entity/        JPA entities (database tables)
 ├── exception/     NotFound / Conflict / BadRequest, mapped to HTTP by the error handler
 ├── repository/    Spring Data JPA repositories
+├── security/      Login, JWT signing and checking, access rules, first admin account
 └── service/       Business rules and transactions (customers, products, sales and stock)
 
 src/main/resources/db/migration
 ├── V1__create_tables.sql
 ├── V2__add_foreign_key_indexes.sql
-└── V3__sale_date_with_time_zone.sql
+├── V3__sale_date_with_time_zone.sql
+└── V4__create_app_users.sql
 ```
 
 ## Roadmap
@@ -222,7 +247,8 @@ src/main/resources/db/migration
 - [x] Pagination and search
 - [x] Flyway database migrations
 - [x] Docker Compose
-- [ ] JWT authentication with `ADMIN` / `CASHIER` roles
+- [x] JWT authentication with `ADMIN` / `CASHIER` roles
+- [ ] Per-role access rules for products, customers and sales
 - [ ] Stock movement history and low-stock alerts
 - [ ] Sales reports and CSV/PDF export
 - [ ] Live demo

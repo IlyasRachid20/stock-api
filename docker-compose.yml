@@ -25,6 +25,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-stock_api}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-stock}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-stock}
+      # Empty values are allowed: a random JWT key is used, and the admin password is generated
+      # and printed once in the logs (docker compose logs app)
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-}
+      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:-}
     ports:
       - "${APP_PORT:-8080}:8080"
     healthcheck:
