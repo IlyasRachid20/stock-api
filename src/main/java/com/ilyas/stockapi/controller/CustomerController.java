@@ -32,6 +32,9 @@ public class CustomerController {
 
     @PostMapping
     public Customer create(@Valid @RequestBody Customer customer) {
+        if (customer.getEmail() != null && customerRepository.existsByEmail(customer.getEmail())) {
+            throw emailAlreadyUsed(customer.getEmail());
+        }
         return customerRepository.save(customer);
     }
 
@@ -39,6 +42,9 @@ public class CustomerController {
     public Customer update(@PathVariable Long id, @Valid @RequestBody Customer customer) {
         if (!customerRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        if (customer.getEmail() != null && customerRepository.existsByEmailAndIdNot(customer.getEmail(), id)) {
+            throw emailAlreadyUsed(customer.getEmail());
         }
         customer.setId(id);
         return customerRepository.save(customer);
@@ -50,5 +56,9 @@ public class CustomerController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
         customerRepository.deleteById(id);
+    }
+
+    private static ResponseStatusException emailAlreadyUsed(String email) {
+        return new ResponseStatusException(HttpStatus.CONFLICT, "Email " + email + " is already used by another customer");
     }
 }
