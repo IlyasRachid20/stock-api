@@ -75,3 +75,31 @@ jobs:
           psql -d legacy -At -c "select version || ' ' || type from flyway_schema_history order by installed_rank" | tee history.txt
           grep -qx "1 BASELINE" history.txt
           grep -qx "2 SQL" history.txt
+
+  # Builds the Docker image and starts the full stack with Docker Compose,
+  # then sends real requests to check it works end to end.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start app and database
+        run: docker compose up --build --detach --wait --wait-timeout 180
+
+      - name: Smoke test the running API
+        run: |
+          curl -fsS http://localhost:8080/actuator/health | grep -q '"status":"UP"'
+          curl -fsS -X POST http://localhost:8080/api/products \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Galaxy S26","price":9500.00,"quantity":10}' | tee product.json
+          grep -q '"name":"Galaxy S26"' product.json
+          curl -fsS "http://localhost:8080/api/products?search=galaxy" | grep -q '"totalElements":1'
+          curl -fsS -o /dev/null http://localhost:8080/swagger-ui/index.html
+
+      - name: Show logs if something failed
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop
+        if: always()
+        run: docker compose down --volumes

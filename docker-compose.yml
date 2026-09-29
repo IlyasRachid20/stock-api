@@ -1,0 +1,38 @@
+# Starts PostgreSQL and the API together:  docker compose up --build
+# Then open http://localhost:8080/swagger-ui.html
+# Credentials come from a .env file next to this one (see .env.example); the defaults are for local use only.
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stock_api}
+      POSTGRES_USER: ${POSTGRES_USER:-stock}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stock}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-stock_api}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-stock}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-stock}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /actuator/health HTTP/1.0\r\n\r\n' >&3 && grep -q UP <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  db-data:

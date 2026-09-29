@@ -19,7 +19,7 @@ error comes back with a clear message.
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **71 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
+- **73 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
 
 ## Tech stack
 
@@ -30,7 +30,8 @@ error comes back with a clear message.
 | Database | PostgreSQL, schema managed by Flyway (H2 in-memory for fast tests) |
 | API docs | springdoc-openapi 3 / Swagger UI |
 | Tests | JUnit 5, MockMvc, AssertJ |
-| CI | GitHub Actions |
+| CI | GitHub Actions: tests on H2 and PostgreSQL, plus a Docker Compose smoke test |
+| Packaging | Docker multi-stage image (non-root), Docker Compose |
 | Build | Maven (wrapper included) |
 
 ## Data model
@@ -145,6 +146,21 @@ POST /api/products     {"name": "", "price": -5}
 
 ## Getting started
 
+### Option 1: Docker (recommended)
+
+Only [Docker](https://www.docker.com/products/docker-desktop/) is needed: no Java, no PostgreSQL install.
+
+```bash
+git clone https://github.com/IlyasRachid20/stock-api.git
+cd stock-api
+cp .env.example .env        # then edit the password in .env
+docker compose up --build
+```
+
+Open http://localhost:8080/swagger-ui.html. The database is kept in a Docker volume between restarts; `docker compose down --volumes` deletes it.
+
+### Option 2: Run with Java
+
 **Prerequisites:** JDK 21 and a running PostgreSQL database. No Maven install is needed: use `./mvnw` (or `mvnw.cmd` on Windows).
 
 1. Clone the repository:
@@ -195,7 +211,7 @@ src/main/resources/db/migration
 - [x] Request/response DTOs
 - [x] Pagination and search
 - [x] Flyway database migrations
-- [ ] Docker Compose
+- [x] Docker Compose
 - [ ] JWT authentication with `ADMIN` / `CASHIER` roles
 - [ ] Stock movement history and low-stock alerts
 - [ ] Sales reports and CSV/PDF export
