@@ -4,6 +4,7 @@ import com.ilyas.stockapi.dto.CustomerRequest;
 import com.ilyas.stockapi.dto.CustomerResponse;
 import com.ilyas.stockapi.entity.Customer;
 import com.ilyas.stockapi.repository.CustomerRepository;
+import com.ilyas.stockapi.repository.SaleRepository;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
@@ -18,9 +19,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class CustomerController {
 
     private final CustomerRepository customerRepository;
+    private final SaleRepository saleRepository;
 
-    public CustomerController(CustomerRepository customerRepository) {
+    public CustomerController(CustomerRepository customerRepository, SaleRepository saleRepository) {
         this.customerRepository = customerRepository;
+        this.saleRepository = saleRepository;
     }
 
     // GET /api/customers?search=ahmed&page=0&size=20 (search matches name or email)
@@ -61,7 +64,13 @@ public class CustomerController {
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
-        customerRepository.delete(findOrThrow(id));
+        Customer customer = findOrThrow(id);
+        long sales = saleRepository.countByCustomerId(id);
+        if (sales > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Customer '" + customer.getName()
+                    + "' cannot be deleted: they have " + sales + " sale(s)");
+        }
+        customerRepository.delete(customer);
     }
 
     private Customer findOrThrow(Long id) {

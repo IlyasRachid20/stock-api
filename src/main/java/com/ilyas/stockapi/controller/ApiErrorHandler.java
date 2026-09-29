@@ -1,5 +1,6 @@
 package com.ilyas.stockapi.controller;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
@@ -45,5 +46,12 @@ public class ApiErrorHandler {
         }
         String property = ((PropertyReferenceException) cause).getPropertyName();
         return ResponseEntity.badRequest().body(Map.of("error", "Cannot sort by unknown field '" + property + "'"));
+    }
+
+    // Safety net: a database constraint the checks above didn't catch returns 409, not a 500
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, String> handleConstraintViolation(DataIntegrityViolationException ex) {
+        return Map.of("error", "The request conflicts with existing data");
     }
 }
