@@ -97,7 +97,33 @@ class AuthTests {
 	void garbageTokenReturns401() throws Exception {
 		mockMvc.perform(get("/api/products").header("Authorization", "Bearer not-a-real-token"))
 				.andExpect(status().isUnauthorized())
-				.andExpect(jsonPath("$.error").exists());
+				.andExpect(jsonPath("$.error").value("Invalid or expired token: log in again with POST /api/auth/login"));
+	}
+
+	// What Swagger UI sent after the example response was pasted into "Authorize"
+	@Test
+	void loginStillWorksWhenABrokenTokenIsSentWithIt() throws Exception {
+		mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(ADMIN_LOGIN)
+						.header("Authorization", "Bearer \"accessToken\": \"string\",   \"tokenType\": \"string\",   \"expiresIn\": 0"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.accessToken").isNotEmpty());
+	}
+
+	// What happens 8 hours later, when Swagger UI still sends the old token
+	@Test
+	void loginStillWorksWhenAnExpiredTokenIsSentWithIt() throws Exception {
+		String expired = sign(jwtEncoder, Instant.now().minusSeconds(7200), Instant.now().minusSeconds(3600));
+
+		mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(ADMIN_LOGIN)
+						.header("Authorization", "Bearer " + expired))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void swaggerDoesNotSendTheTokenToTheLoginEndpoint() throws Exception {
+		mockMvc.perform(get("/v3/api-docs"))
+				.andExpect(jsonPath("$.paths['/api/auth/login'].post.security").isEmpty())
+				.andExpect(jsonPath("$.security[0].bearer-jwt").exists());
 	}
 
 	@Test
