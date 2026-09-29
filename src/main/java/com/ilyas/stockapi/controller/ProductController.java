@@ -3,7 +3,9 @@ package com.ilyas.stockapi.controller;
 import com.ilyas.stockapi.entity.Product;
 import com.ilyas.stockapi.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -21,7 +23,8 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public Product getById(@PathVariable Long id) {
-        return productRepository.findById(id).orElse(null);
+        return productRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     @PostMapping
@@ -31,12 +34,18 @@ public class ProductController {
 
     @PutMapping("/{id}")
     public Product update(@PathVariable Long id, @RequestBody Product product) {
+        if (!productRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
         product.setId(id);
         return productRepository.save(product);
     }
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
+        if (!productRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
         productRepository.deleteById(id);
     }
 }
