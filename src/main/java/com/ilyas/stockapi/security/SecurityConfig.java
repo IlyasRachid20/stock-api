@@ -54,17 +54,18 @@ public class SecurityConfig {
                         // Only admins manage user accounts
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
 
-                        // ===== EXERCISE: what a CASHIER may do (see the table in RoleAccessTests) =====
-                        // Write your rules here, one line per case. Rules are checked from top to
-                        // bottom and the FIRST one that matches wins, so their order matters.
-                        // Syntax, with a made-up URL:
-                        //   .requestMatchers(HttpMethod.GET, "/api/example/**").hasAnyRole("ADMIN", "CASHIER")
-                        //   .requestMatchers("/api/example/**").hasRole("ADMIN")
-                        // "/api/example/**" matches both /api/example and /api/example/42.
-                        // Done when every test in RoleAccessTests passes.
-                        // ============================================================================
-
-                        // Everything else needs a valid token
+                        // What each role may do (the table is in RoleAccessTests). Rules are checked
+                        // from top to bottom and the first one that matches decides.
+                        // Both roles can read everything
+                        .requestMatchers(HttpMethod.GET, "/api/**").hasAnyRole("ADMIN", "CASHIER")
+                        // A cashier registers customers and records sales at the till
+                        .requestMatchers(HttpMethod.POST, "/api/customers", "/api/sales", "/api/sale-items")
+                                .hasAnyRole("ADMIN", "CASHIER")
+                        .requestMatchers(HttpMethod.PUT, "/api/customers/*").hasAnyRole("ADMIN", "CASHIER")
+                        // Everything else under /api is for admins: products, prices, stock and every
+                        // delete. Deny by default: a new endpoint stays admin-only until a rule above opens it.
+                        .requestMatchers("/api/**").hasRole("ADMIN")
+                        // Anything outside /api still needs a valid token
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
