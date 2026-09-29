@@ -15,10 +15,11 @@ error comes back with a clear message.
 - **No overselling, even under load:** the product row is locked while its stock changes, so two sales at the same moment can't both take the last unit.
 - **Clear errors:** `400` with a message per invalid field, `404` for unknown ids, `409` for business conflicts (not enough stock, email already used).
 - **Sales with totals:** each sale returns its items and a computed total.
+- **Versioned database schema:** tables are created by Flyway migration scripts; Hibernate only validates them at startup and never changes the database.
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **69 automated tests** run on every pull request with GitHub Actions.
+- **73 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
 
 ## Tech stack
 
@@ -26,10 +27,11 @@ error comes back with a clear message.
 |---|---|
 | Language | Java 21 |
 | Framework | Spring Boot 4.1 (Web MVC, Data JPA, Validation) |
-| Database | PostgreSQL (H2 in-memory for tests) |
+| Database | PostgreSQL, schema managed by Flyway (H2 in-memory for fast tests) |
 | API docs | springdoc-openapi 3 / Swagger UI |
 | Tests | JUnit 5, MockMvc, AssertJ |
-| CI | GitHub Actions |
+| CI | GitHub Actions: tests on H2 and PostgreSQL, plus a Docker Compose smoke test |
+| Packaging | Docker multi-stage image (non-root), Docker Compose |
 | Build | Maven (wrapper included) |
 
 ## Data model
@@ -144,6 +146,21 @@ POST /api/products     {"name": "", "price": -5}
 
 ## Getting started
 
+### Option 1: Docker (recommended)
+
+Only [Docker](https://www.docker.com/products/docker-desktop/) is needed: no Java, no PostgreSQL install.
+
+```bash
+git clone https://github.com/IlyasRachid20/stock-api.git
+cd stock-api
+cp .env.example .env        # then edit the password in .env
+docker compose up --build
+```
+
+Open http://localhost:8080/swagger-ui.html. The database is kept in a Docker volume between restarts; `docker compose down --volumes` deletes it.
+
+### Option 2: Run with Java
+
 **Prerequisites:** JDK 21 and a running PostgreSQL database. No Maven install is needed: use `./mvnw` (or `mvnw.cmd` on Windows).
 
 1. Clone the repository:
@@ -158,6 +175,7 @@ POST /api/products     {"name": "", "price": -5}
    export SPRING_DATASOURCE_PASSWORD=your_password
    ```
    On Windows PowerShell use `$env:SPRING_DATASOURCE_URL = "..."`. In an IDE, set them in the run configuration.
+   The database must exist but can be empty: Flyway creates the tables on first start.
 3. Start the app:
    ```bash
    ./mvnw spring-boot:run
@@ -170,7 +188,7 @@ POST /api/products     {"name": "", "price": -5}
 ./mvnw test
 ```
 
-Tests run against an in-memory H2 database, so they need no PostgreSQL and no credentials. They cover the API end to end through MockMvc: validation, not-found and conflict errors, stock updates, sale totals, and the API documentation. The same suite runs on every pull request.
+Tests run against an in-memory H2 database, so they need no PostgreSQL and no credentials. In CI they also run against PostgreSQL 17, twice: on an empty database, and on one created before Flyway was added, to prove both upgrade paths. They cover the API end to end through MockMvc: validation, not-found and conflict errors, stock updates, sale totals, and the API documentation. The same suite runs on every pull request.
 
 ## Project structure
 
@@ -182,13 +200,18 @@ src/main/java/com/ilyas/stockapi
 ├── entity/        JPA entities (database tables)
 ├── repository/    Spring Data JPA repositories
 └── service/       SaleService: sales and stock in one transaction
+
+src/main/resources/db/migration
+├── V1__create_tables.sql
+└── V2__add_foreign_key_indexes.sql
 ```
 
 ## Roadmap
 
 - [x] Request/response DTOs
 - [x] Pagination and search
-- [ ] Flyway database migrations and Docker Compose
+- [x] Flyway database migrations
+- [x] Docker Compose
 - [ ] JWT authentication with `ADMIN` / `CASHIER` roles
 - [ ] Stock movement history and low-stock alerts
 - [ ] Sales reports and CSV/PDF export
