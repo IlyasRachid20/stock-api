@@ -24,7 +24,7 @@ error comes back with a clear message.
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **131 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
+- **134 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
 
 ## Tech stack
 
@@ -213,6 +213,14 @@ POST /api/products     {"name": "", "price": -5}
 {"errors": {"name": "must not be blank", "price": "must be greater than or equal to 0.00"}}
 ```
 
+## Deploy your own (Render + Neon, free)
+
+1. Create a PostgreSQL database on [Neon](https://neon.tech) and note its **direct** connection (not the `-pooler` one): host, database, user, password.
+2. On [Render](https://render.com): **New → Blueprint**, pick this repository. [`render.yaml`](render.yaml) describes the service; Render asks for the database settings and an admin password, and generates `APP_JWT_SECRET` itself.
+3. The first deploy creates the tables (Flyway), the `admin` account and, in demo mode, a sample shop with a `demo` cashier account.
+
+The free plan sleeps after 15 minutes without traffic, so the first request after a pause can take about a minute.
+
 ## Getting started
 
 ### Option 1: Docker (recommended)
@@ -290,7 +298,7 @@ src/main/resources/db/migration
 - [x] Per-role access rules for products, customers and sales
 - [x] Stock movement history and low-stock alerts
 - [ ] Sales reports and CSV/PDF export
-- [ ] Live demo
+- [ ] Live demo (deployment files ready: `render.yaml`)
 - [ ] Web dashboard
 
 ## Author
