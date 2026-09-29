@@ -65,7 +65,7 @@ class SaleTotalTests {
 		addItem(phoneId, 2);
 		long cableItemId = idOf(addItem(cableId, 3));
 
-		mockMvc.perform(delete("/api/sale-items/" + cableItemId)).andExpect(status().isOk());
+		mockMvc.perform(delete("/api/sale-items/" + cableItemId)).andExpect(status().isNoContent());
 
 		mockMvc.perform(get("/api/sales/" + saleId))
 				.andExpect(jsonPath("$.items.length()").value(1))
@@ -88,7 +88,7 @@ class SaleTotalTests {
 		long customerId = idOf(postJson("/api/customers", "{\"name\":\"Sara\"}"));
 
 		postJson("/api/sales", "{\"customerId\":" + customerId + ",\"total\":999,\"items\":[{\"quantity\":5}]}")
-				.andExpect(status().isOk())
+				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.items.length()").value(0))
 				.andExpect(jsonPath("$.total").value(0));
 	}
@@ -96,7 +96,7 @@ class SaleTotalTests {
 	private ResultActions addItem(long productId, int quantity) throws Exception {
 		return postJson("/api/sale-items", "{\"saleId\":" + saleId + ",\"productId\":" + productId + ","
 				+ "\"quantity\":" + quantity + "}")
-				.andExpect(status().isOk());
+				.andExpect(status().isCreated());
 	}
 
 	private ResultActions postJson(String path, String body) throws Exception {

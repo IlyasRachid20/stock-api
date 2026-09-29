@@ -34,7 +34,7 @@ class ValidationTests {
 	@Test
 	void validProductIsCreated() throws Exception {
 		postJson("/api/products", "{\"name\":\"Galaxy S26\",\"price\":9500.00,\"quantity\":10}")
-				.andExpect(status().isOk())
+				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.id").isNumber());
 	}
 

@@ -43,6 +43,7 @@ public class CustomerController {
     }
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public CustomerResponse create(@Valid @RequestBody CustomerRequest request) {
         if (request.email() != null && customerRepository.existsByEmail(request.email())) {
             throw emailAlreadyUsed(request.email());
@@ -63,6 +64,7 @@ public class CustomerController {
     }
 
     @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         Customer customer = findOrThrow(id);
         long sales = saleRepository.countByCustomerId(id);

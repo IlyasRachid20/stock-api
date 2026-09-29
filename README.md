@@ -13,13 +13,14 @@ error comes back with a clear message.
 
 - **Stock always in sync:** selling an item takes it out of stock; deleting an item or a whole sale puts it back.
 - **No overselling, even under load:** the product row is locked while its stock changes, so two sales at the same moment can't both take the last unit.
-- **Clear errors:** `400` with a message per invalid field, `404` for unknown ids, `409` for business conflicts (not enough stock, email already used).
+- **Standard HTTP semantics:** `201 Created` on create, `204 No Content` on delete.
+- **Clear, consistent errors:** every error has the same JSON shape, including malformed JSON, wrong types, unknown URLs and wrong methods: `400` with a message per invalid field, `404` for unknown ids, `409` for business conflicts (not enough stock, email already used), and a generic `500` that never leaks internals.
 - **Sales with totals:** each sale returns its items and a computed total.
 - **Versioned database schema:** tables are created by Flyway migration scripts; Hibernate only validates them at startup and never changes the database.
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **73 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
+- **80 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
 
 ## Tech stack
 
@@ -130,10 +131,16 @@ GET /api/sales/1
 
 ### Error responses
 
+Every error uses one of two shapes: `{"error": "message"}`, or `{"errors": {"field": "message"}}` for invalid request bodies.
+
 ```http
 POST /api/sale-items   (quantity 50, only 7 left)
 409 Conflict
 {"error": "Not enough stock for product 'Galaxy S26': 7 available, 50 requested"}
+
+GET /api/products/abc
+400 Bad Request
+{"error": "Invalid value 'abc' for parameter 'id'"}
 
 GET /api/products?sort=color
 400 Bad Request

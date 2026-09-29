@@ -47,7 +47,7 @@ class ResponseShapeTests {
 	@Test
 	void productCreatedWithoutQuantityStartsAtZero() throws Exception {
 		postJson("/api/products", "{\"name\":\"Cable\",\"price\":49.90}")
-				.andExpect(status().isOk())
+				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.quantity").value(0));
 	}
 
@@ -86,7 +86,7 @@ class ResponseShapeTests {
 	}
 
 	private long idOf(ResultActions result) throws Exception {
-		Number id = JsonPath.read(result.andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), "$.id");
+		Number id = JsonPath.read(result.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
 		return id.longValue();
 	}
 

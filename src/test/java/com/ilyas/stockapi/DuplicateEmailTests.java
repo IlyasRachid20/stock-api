@@ -26,7 +26,7 @@ class DuplicateEmailTests {
 
 	@Test
 	void creatingCustomerWithUsedEmailReturns409() throws Exception {
-		postCustomer("{\"name\":\"Ahmed\",\"email\":\"ahmed@test.com\"}").andExpect(status().isOk());
+		postCustomer("{\"name\":\"Ahmed\",\"email\":\"ahmed@test.com\"}").andExpect(status().isCreated());
 
 		postCustomer("{\"name\":\"Other Ahmed\",\"email\":\"ahmed@test.com\"}")
 				.andExpect(status().isConflict())
@@ -37,13 +37,13 @@ class DuplicateEmailTests {
 
 	@Test
 	void customersWithoutEmailAreAllowed() throws Exception {
-		postCustomer("{\"name\":\"Ahmed\"}").andExpect(status().isOk());
-		postCustomer("{\"name\":\"Sara\"}").andExpect(status().isOk());
+		postCustomer("{\"name\":\"Ahmed\"}").andExpect(status().isCreated());
+		postCustomer("{\"name\":\"Sara\"}").andExpect(status().isCreated());
 	}
 
 	@Test
 	void updatingCustomerToAnotherCustomersEmailReturns409() throws Exception {
-		postCustomer("{\"name\":\"Ahmed\",\"email\":\"ahmed@test.com\"}").andExpect(status().isOk());
+		postCustomer("{\"name\":\"Ahmed\",\"email\":\"ahmed@test.com\"}").andExpect(status().isCreated());
 		long saraId = idOf(postCustomer("{\"name\":\"Sara\",\"email\":\"sara@test.com\"}"));
 
 		mockMvc.perform(put("/api/customers/" + saraId)

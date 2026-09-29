@@ -56,7 +56,7 @@ class SaleTotalFromDatabaseTests {
 		long productId = idOf(postJson("/api/products", "{\"name\":\"Galaxy S26\",\"price\":9500.00,\"quantity\":10}"));
 		long saleId = idOf(postJson("/api/sales", "{\"customerId\":" + customerId + "}"));
 		postJson("/api/sale-items", "{\"saleId\":" + saleId + ",\"productId\":" + productId + ",\"quantity\":2}")
-				.andExpect(status().isOk());
+				.andExpect(status().isCreated());
 
 		mockMvc.perform(get("/api/sales/" + saleId))
 				.andExpect(status().isOk())
