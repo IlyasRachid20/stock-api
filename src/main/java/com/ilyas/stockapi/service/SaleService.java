@@ -1,5 +1,7 @@
 package com.ilyas.stockapi.service;
 
+import com.ilyas.stockapi.dto.SaleItemRequest;
+import com.ilyas.stockapi.dto.SaleRequest;
 import com.ilyas.stockapi.entity.Customer;
 import com.ilyas.stockapi.entity.Product;
 import com.ilyas.stockapi.entity.Sale;
@@ -34,12 +36,10 @@ public class SaleService {
     }
 
     @Transactional
-    public Sale createSale(Sale sale) {
-        Long customerId = sale.getCustomer().getId();
-        Customer customer = (customerId == null ? null : customerRepository.findById(customerId).orElse(null));
-        if (customer == null) {
-            throw badRequest("Customer " + customerId + " does not exist");
-        }
+    public Sale createSale(SaleRequest request) {
+        Customer customer = customerRepository.findById(request.customerId())
+                .orElseThrow(() -> badRequest("Customer " + request.customerId() + " does not exist"));
+        Sale sale = new Sale();
         sale.setCustomer(customer);
         return saleRepository.save(sale);
     }
@@ -56,30 +56,24 @@ public class SaleService {
     }
 
     @Transactional
-    public SaleItem addItem(SaleItem item) {
-        Long saleId = item.getSale().getId();
-        Sale sale = (saleId == null ? null : saleRepository.findById(saleId).orElse(null));
-        if (sale == null) {
-            throw badRequest("Sale " + saleId + " does not exist");
-        }
+    public SaleItem addItem(SaleItemRequest request) {
+        Sale sale = saleRepository.findById(request.saleId())
+                .orElseThrow(() -> badRequest("Sale " + request.saleId() + " does not exist"));
 
-        Long productId = item.getProduct().getId();
         // Lock the product row so two sales at the same time can't both take the last units
-        Product product = (productId == null ? null : productRepository.findByIdForUpdate(productId).orElse(null));
-        if (product == null) {
-            throw badRequest("Product " + productId + " does not exist");
-        }
+        Product product = productRepository.findByIdForUpdate(request.productId())
+                .orElseThrow(() -> badRequest("Product " + request.productId() + " does not exist"));
 
-        if (product.getQuantity() < item.getQuantity()) {
+        if (product.getQuantity() < request.quantity()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Not enough stock for product '" + product.getName() + "': "
-                            + product.getQuantity() + " available, " + item.getQuantity() + " requested");
+                            + product.getQuantity() + " available, " + request.quantity() + " requested");
         }
-        product.setQuantity(product.getQuantity() - item.getQuantity());
+        product.setQuantity(product.getQuantity() - request.quantity());
 
-        if (item.getUnitPrice() == null) {
-            item.setUnitPrice(product.getPrice());
-        }
+        SaleItem item = new SaleItem();
+        item.setQuantity(request.quantity());
+        item.setUnitPrice(request.unitPrice() != null ? request.unitPrice() : product.getPrice());
         item.setSale(sale);
         item.setProduct(product);
         sale.getItems().add(item);

@@ -15,6 +15,7 @@ error comes back with a clear message.
 - **No overselling, even under load:** the product row is locked while its stock changes, so two sales at the same moment can't both take the last unit.
 - **Clear errors:** `400` with a message per invalid field, `404` for unknown ids, `409` for business conflicts (not enough stock, email already used).
 - **Sales with totals:** each sale returns its items and a computed total.
+- **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
 - **54 automated tests** run on every pull request with GitHub Actions.
 
@@ -75,9 +76,14 @@ Full details, request bodies and a **Try it out** button: http://localhost:8080/
 ### Example: selling a product
 
 ```http
+POST /api/sales
+{"customerId": 1}
+
 POST /api/sale-items
-{"sale": {"id": 1}, "product": {"id": 1}, "quantity": 3}
+{"saleId": 1, "productId": 1, "quantity": 3}
 ```
+
+`unitPrice` is optional and defaults to the product's current price.
 
 The product's stock goes from 10 to 7, and the sale now shows its total:
 
@@ -87,10 +93,10 @@ GET /api/sales/1
 ```json
 {
   "id": 1,
-  "customer": {"id": 1, "name": "Ahmed", "email": "ahmed@test.com", "phone": "0600000000"},
+  "customer": {"id": 1, "name": "Ahmed"},
   "saleDate": "2026-09-29T17:11:37",
   "items": [
-    {"id": 1, "product": {"id": 1, "name": "Galaxy S26", "price": 9500.00, "quantity": 7}, "quantity": 3, "unitPrice": 9500.00}
+    {"id": 1, "saleId": 1, "product": {"id": 1, "name": "Galaxy S26"}, "quantity": 3, "unitPrice": 9500.00, "lineTotal": 28500.00}
   ],
   "total": 28500.00
 }
@@ -144,14 +150,16 @@ Tests run against an in-memory H2 database, so they need no PostgreSQL and no cr
 src/main/java/com/ilyas/stockapi
 ├── config/        OpenAPI (Swagger) setup
 ├── controller/    REST endpoints and the shared error handler
-├── entity/        JPA entities with validation rules
+├── dto/           Request and response records (the API contract)
+├── entity/        JPA entities (database tables)
 ├── repository/    Spring Data JPA repositories
 └── service/       SaleService: sales and stock in one transaction
 ```
 
 ## Roadmap
 
-- [ ] Request/response DTOs, pagination and search
+- [x] Request/response DTOs
+- [ ] Pagination and search
 - [ ] Flyway database migrations and Docker Compose
 - [ ] JWT authentication with `ADMIN` / `CASHIER` roles
 - [ ] Stock movement history and low-stock alerts

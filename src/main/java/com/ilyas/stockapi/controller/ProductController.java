@@ -1,5 +1,7 @@
 package com.ilyas.stockapi.controller;
 
+import com.ilyas.stockapi.dto.ProductRequest;
+import com.ilyas.stockapi.dto.ProductResponse;
 import com.ilyas.stockapi.entity.Product;
 import com.ilyas.stockapi.repository.ProductRepository;
 import jakarta.validation.Valid;
@@ -20,35 +22,43 @@ public class ProductController {
     }
 
     @GetMapping
-    public List<Product> getAll() {
-        return productRepository.findAll();
+    public List<ProductResponse> getAll() {
+        return productRepository.findAll().stream().map(ProductResponse::from).toList();
     }
 
     @GetMapping("/{id}")
-    public Product getById(@PathVariable Long id) {
-        return productRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public ProductResponse getById(@PathVariable Long id) {
+        return ProductResponse.from(findOrThrow(id));
     }
 
     @PostMapping
-    public Product create(@Valid @RequestBody Product product) {
-        return productRepository.save(product);
+    public ProductResponse create(@Valid @RequestBody ProductRequest request) {
+        Product product = new Product();
+        product.setName(request.name());
+        product.setPrice(request.price());
+        product.setQuantity(request.quantity() != null ? request.quantity() : 0);
+        return ProductResponse.from(productRepository.save(product));
     }
 
+    // quantity is optional here: leave it out to change only name and price
     @PutMapping("/{id}")
-    public Product update(@PathVariable Long id, @Valid @RequestBody Product product) {
-        if (!productRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+    public ProductResponse update(@PathVariable Long id, @Valid @RequestBody ProductRequest request) {
+        Product product = findOrThrow(id);
+        product.setName(request.name());
+        product.setPrice(request.price());
+        if (request.quantity() != null) {
+            product.setQuantity(request.quantity());
         }
-        product.setId(id);
-        return productRepository.save(product);
+        return ProductResponse.from(productRepository.save(product));
     }
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
-        if (!productRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-        }
-        productRepository.deleteById(id);
+        productRepository.delete(findOrThrow(id));
+    }
+
+    private Product findOrThrow(Long id) {
+        return productRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 }

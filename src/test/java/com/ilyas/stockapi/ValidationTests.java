@@ -112,7 +112,7 @@ class ValidationTests {
 	void saleWithoutCustomerIsRejected() throws Exception {
 		postJson("/api/sales", "{}")
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.errors.customer").exists());
+				.andExpect(jsonPath("$.errors.customerId").exists());
 	}
 
 	@Test
@@ -120,8 +120,8 @@ class ValidationTests {
 		postJson("/api/sale-items", "{\"quantity\":0,\"unitPrice\":10.00}")
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.errors.quantity").exists())
-				.andExpect(jsonPath("$.errors.sale").exists())
-				.andExpect(jsonPath("$.errors.product").exists());
+				.andExpect(jsonPath("$.errors.saleId").exists())
+				.andExpect(jsonPath("$.errors.productId").exists());
 	}
 
 	private ResultActions postJson(String path, String body) throws Exception {

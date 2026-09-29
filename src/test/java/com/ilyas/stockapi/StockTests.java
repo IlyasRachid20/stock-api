@@ -32,7 +32,7 @@ class StockTests {
 	void createProductAndSale() throws Exception {
 		long customerId = idOf(postJson("/api/customers", "{\"name\":\"Ahmed\"}"));
 		productId = idOf(postJson("/api/products", "{\"name\":\"Galaxy S26\",\"price\":9500.00,\"quantity\":10}"));
-		saleId = idOf(postJson("/api/sales", "{\"customer\":{\"id\":" + customerId + "}}"));
+		saleId = idOf(postJson("/api/sales", "{\"customerId\":" + customerId + "}"));
 	}
 
 	@Test
@@ -99,14 +99,14 @@ class StockTests {
 
 	@Test
 	void itemForUnknownProductReturns400() throws Exception {
-		postJson("/api/sale-items", "{\"sale\":{\"id\":" + saleId + "},\"product\":{\"id\":999999},\"quantity\":1}")
+		postJson("/api/sale-items", "{\"saleId\":" + saleId + ",\"productId\":999999,\"quantity\":1}")
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.error").value("Product 999999 does not exist"));
 	}
 
 	@Test
 	void itemForUnknownSaleReturns400() throws Exception {
-		postJson("/api/sale-items", "{\"sale\":{\"id\":999999},\"product\":{\"id\":" + productId + "},\"quantity\":1}")
+		postJson("/api/sale-items", "{\"saleId\":999999,\"productId\":" + productId + ",\"quantity\":1}")
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.error").value("Sale 999999 does not exist"));
 
@@ -115,14 +115,14 @@ class StockTests {
 
 	@Test
 	void saleForUnknownCustomerReturns400() throws Exception {
-		postJson("/api/sales", "{\"customer\":{\"id\":999999}}")
+		postJson("/api/sales", "{\"customerId\":999999}")
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.error").value("Customer 999999 does not exist"));
 	}
 
 	private ResultActions addItem(int quantity, String unitPrice) throws Exception {
 		String price = unitPrice == null ? "" : ",\"unitPrice\":" + unitPrice;
-		return postJson("/api/sale-items", "{\"sale\":{\"id\":" + saleId + "},\"product\":{\"id\":" + productId + "},"
+		return postJson("/api/sale-items", "{\"saleId\":" + saleId + ",\"productId\":" + productId + ","
 				+ "\"quantity\":" + quantity + price + "}");
 	}
 

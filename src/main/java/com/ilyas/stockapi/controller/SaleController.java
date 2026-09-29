@@ -1,6 +1,7 @@
 package com.ilyas.stockapi.controller;
 
-import com.ilyas.stockapi.entity.Sale;
+import com.ilyas.stockapi.dto.SaleRequest;
+import com.ilyas.stockapi.dto.SaleResponse;
 import com.ilyas.stockapi.repository.SaleRepository;
 import com.ilyas.stockapi.service.SaleService;
 import jakarta.validation.Valid;
@@ -23,19 +24,20 @@ public class SaleController {
     }
 
     @GetMapping
-    public List<Sale> getAll() {
-        return saleRepository.findAll();
+    public List<SaleResponse> getAll() {
+        return saleRepository.findAll().stream().map(SaleResponse::from).toList();
     }
 
     @GetMapping("/{id}")
-    public Sale getById(@PathVariable Long id) {
+    public SaleResponse getById(@PathVariable Long id) {
         return saleRepository.findById(id)
+                .map(SaleResponse::from)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     @PostMapping
-    public Sale create(@Valid @RequestBody Sale sale) {
-        return saleService.createSale(sale);
+    public SaleResponse create(@Valid @RequestBody SaleRequest request) {
+        return SaleResponse.from(saleService.createSale(request));
     }
 
     @DeleteMapping("/{id}")

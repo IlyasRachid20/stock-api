@@ -34,7 +34,7 @@ class SaleTotalTests {
 		long customerId = idOf(postJson("/api/customers", "{\"name\":\"Ahmed\"}"));
 		phoneId = idOf(postJson("/api/products", "{\"name\":\"Galaxy S26\",\"price\":9500.00,\"quantity\":10}"));
 		cableId = idOf(postJson("/api/products", "{\"name\":\"Cable\",\"price\":49.90,\"quantity\":100}"));
-		saleId = idOf(postJson("/api/sales", "{\"customer\":{\"id\":" + customerId + "}}"));
+		saleId = idOf(postJson("/api/sales", "{\"customerId\":" + customerId + "}"));
 	}
 
 	@Test
@@ -73,27 +73,28 @@ class SaleTotalTests {
 	}
 
 	@Test
-	void saleItemShowsItsSaleWithoutRepeatingItems() throws Exception {
-		long itemId = idOf(addItem(phoneId, 1));
+	void saleItemShowsItsSaleIdAndLineTotal() throws Exception {
+		long itemId = idOf(addItem(cableId, 3));
 
 		mockMvc.perform(get("/api/sale-items/" + itemId))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.sale.id").value(saleId))
-				.andExpect(jsonPath("$.sale.items").doesNotExist());
+				.andExpect(jsonPath("$.saleId").value(saleId))
+				.andExpect(jsonPath("$.sale").doesNotExist())
+				.andExpect(jsonPath("$.lineTotal").value(149.70));
 	}
 
 	@Test
 	void itemsAndTotalSentWhenCreatingSaleAreIgnored() throws Exception {
 		long customerId = idOf(postJson("/api/customers", "{\"name\":\"Sara\"}"));
 
-		postJson("/api/sales", "{\"customer\":{\"id\":" + customerId + "},\"total\":999,\"items\":[{\"quantity\":5}]}")
+		postJson("/api/sales", "{\"customerId\":" + customerId + ",\"total\":999,\"items\":[{\"quantity\":5}]}")
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.items.length()").value(0))
 				.andExpect(jsonPath("$.total").value(0));
 	}
 
 	private ResultActions addItem(long productId, int quantity) throws Exception {
-		return postJson("/api/sale-items", "{\"sale\":{\"id\":" + saleId + "},\"product\":{\"id\":" + productId + "},"
+		return postJson("/api/sale-items", "{\"saleId\":" + saleId + ",\"productId\":" + productId + ","
 				+ "\"quantity\":" + quantity + "}")
 				.andExpect(status().isOk());
 	}
