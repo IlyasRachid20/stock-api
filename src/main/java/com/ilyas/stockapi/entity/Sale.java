@@ -14,7 +14,7 @@ public class Sale {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
@@ -24,7 +24,7 @@ public class Sale {
     @OneToMany(mappedBy = "sale")
     private List<SaleItem> items = new ArrayList<>();
 
-    // Getters et Setters
+    // Getters and setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

@@ -12,7 +12,8 @@ error comes back with a clear message.
 ## Highlights
 
 - **Stock always in sync:** selling an item takes it out of stock; deleting an item or a whole sale puts it back.
-- **No overselling, even under load:** the product row is locked while its stock changes, so two sales at the same moment can't both take the last unit.
+- **No overselling, even under load:** the product row is locked while its stock changes (by a sale or a product update), so two requests at the same moment can't both take the last unit or overwrite each other's stock.
+- **Fast lists:** related rows are loaded in batches, so a page of sales takes at most 5 queries instead of one per sale, item and product (41 before). A test fails if this regresses.
 - **Standard HTTP semantics:** `201 Created` on create, `204 No Content` on delete.
 - **Clear, consistent errors:** every error has the same JSON shape, including malformed JSON, wrong types, unknown URLs and wrong methods: `400` with a message per invalid field, `404` for unknown ids, `409` for business conflicts (not enough stock, email already used), and a generic `500` that never leaks internals.
 - **Sales with totals:** each sale returns its items and a computed total.
@@ -20,7 +21,7 @@ error comes back with a clear message.
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **80 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
+- **86 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
 
 ## Tech stack
 
@@ -202,11 +203,12 @@ Tests run against an in-memory H2 database, so they need no PostgreSQL and no cr
 ```
 src/main/java/com/ilyas/stockapi
 ├── config/        OpenAPI (Swagger) setup
-├── controller/    REST endpoints and the shared error handler
+├── controller/    REST endpoints only: HTTP in, DTOs out, no business logic
 ├── dto/           Request and response records (the API contract)
 ├── entity/        JPA entities (database tables)
+├── exception/     NotFound / Conflict / BadRequest, mapped to HTTP by the error handler
 ├── repository/    Spring Data JPA repositories
-└── service/       SaleService: sales and stock in one transaction
+└── service/       Business rules and transactions (customers, products, sales and stock)
 
 src/main/resources/db/migration
 ├── V1__create_tables.sql

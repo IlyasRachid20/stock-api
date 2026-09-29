@@ -8,9 +8,9 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
-    boolean existsByEmail(String email);
+    boolean existsByEmailIgnoreCase(String email);
 
-    boolean existsByEmailAndIdNot(String email, Long id);
+    boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
 
     @Query("select c from Customer c where lower(c.name) like lower(concat('%', :text, '%'))"
             + " or lower(c.email) like lower(concat('%', :text, '%'))")

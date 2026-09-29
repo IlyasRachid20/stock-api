@@ -1,5 +1,8 @@
 package com.ilyas.stockapi.controller;
 
+import com.ilyas.stockapi.exception.BadRequestException;
+import com.ilyas.stockapi.exception.ConflictException;
+import com.ilyas.stockapi.exception.NotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.TypeMismatchException;
@@ -43,11 +46,27 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.badRequest().body(Map.of("errors", errors));
     }
 
-    // Every other error Spring MVC handles, including our own ResponseStatusExceptions
+    // Every other error Spring MVC handles itself (malformed JSON, wrong method, unknown URL, ...)
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body,
             HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         return ResponseEntity.status(status).headers(headers).body(Map.of("error", messageFor(ex, status)));
+    }
+
+    // The services' own exceptions
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<Object> handleNotFound(NotFoundException ex) {
+        return error(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<Object> handleConflict(ConflictException ex) {
+        return error(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<Object> handleBadRequest(BadRequestException ex) {
+        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     // ?sort=unknownField returns 400 instead of a 500

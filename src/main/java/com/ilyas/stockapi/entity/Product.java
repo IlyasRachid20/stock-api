@@ -20,7 +20,7 @@ public class Product {
     @Column(nullable = false)
     private Integer quantity = 0;
 
-    // Getters et Setters
+    // Getters and setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
