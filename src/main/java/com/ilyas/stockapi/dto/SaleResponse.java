@@ -2,13 +2,13 @@ package com.ilyas.stockapi.dto;
 
 import com.ilyas.stockapi.entity.Sale;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 public record SaleResponse(
         Long id,
         CustomerSummary customer,
-        LocalDateTime saleDate,
+        Instant saleDate,
         List<SaleItemResponse> items,
         BigDecimal total) {
 

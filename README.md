@@ -16,12 +16,12 @@ error comes back with a clear message.
 - **Fast lists:** related rows are loaded in batches, so a page of sales takes at most 5 queries instead of one per sale, item and product (41 before). A test fails if this regresses.
 - **Standard HTTP semantics:** `201 Created` on create, `204 No Content` on delete.
 - **Clear, consistent errors:** every error has the same JSON shape, including malformed JSON, wrong types, unknown URLs and wrong methods: `400` with a message per invalid field, `404` for unknown ids, `409` for business conflicts (not enough stock, email already used), and a generic `500` that never leaks internals.
-- **Sales with totals:** each sale returns its items and a computed total.
+- **Sales with totals:** each sale returns its items, line totals and a computed total. Sale dates are UTC instants (`...Z`), so clients in any time zone show the right local time.
 - **Versioned database schema:** tables are created by Flyway migration scripts; Hibernate only validates them at startup and never changes the database.
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **86 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
+- **87 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
 
 ## Tech stack
 
@@ -122,7 +122,7 @@ GET /api/sales/1
 {
   "id": 1,
   "customer": {"id": 1, "name": "Ahmed"},
-  "saleDate": "2026-09-29T17:11:37",
+  "saleDate": "2026-09-29T17:11:37Z",
   "items": [
     {"id": 1, "saleId": 1, "product": {"id": 1, "name": "Galaxy S26"}, "quantity": 3, "unitPrice": 9500.00, "lineTotal": 28500.00}
   ],
@@ -212,7 +212,8 @@ src/main/java/com/ilyas/stockapi
 
 src/main/resources/db/migration
 ├── V1__create_tables.sql
-└── V2__add_foreign_key_indexes.sql
+├── V2__add_foreign_key_indexes.sql
+└── V3__sale_date_with_time_zone.sql
 ```
 
 ## Roadmap
