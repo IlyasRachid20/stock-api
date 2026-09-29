@@ -32,7 +32,7 @@ class DuplicateEmailTests {
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.error").value("Email ahmed@test.com is already used by another customer"));
 
-		mockMvc.perform(get("/api/customers")).andExpect(jsonPath("$.length()").value(1));
+		mockMvc.perform(get("/api/customers")).andExpect(jsonPath("$.page.totalElements").value(1));
 	}
 
 	@Test

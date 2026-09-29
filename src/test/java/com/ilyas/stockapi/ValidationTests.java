@@ -77,7 +77,7 @@ class ValidationTests {
 				.andExpect(jsonPath("$.errors.price").exists())
 				.andExpect(jsonPath("$.errors.quantity").exists());
 
-		mockMvc.perform(get("/api/products")).andExpect(jsonPath("$.length()").value(0));
+		mockMvc.perform(get("/api/products")).andExpect(jsonPath("$.page.totalElements").value(0));
 	}
 
 	@Test

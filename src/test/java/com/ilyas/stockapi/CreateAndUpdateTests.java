@@ -43,10 +43,10 @@ class CreateAndUpdateTests {
 
 		mockMvc.perform(get("/api/products"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(1))
-				.andExpect(jsonPath("$[0].name").value("Galaxy S26"))
-				.andExpect(jsonPath("$[0].price").value(9500.00))
-				.andExpect(jsonPath("$[0].quantity").value(10));
+				.andExpect(jsonPath("$.page.totalElements").value(1))
+				.andExpect(jsonPath("$.content[0].name").value("Galaxy S26"))
+				.andExpect(jsonPath("$.content[0].price").value(9500.00))
+				.andExpect(jsonPath("$.content[0].quantity").value(10));
 	}
 
 	@Test
@@ -61,7 +61,7 @@ class CreateAndUpdateTests {
 				.andExpect(jsonPath("$.price").value(8999.00))
 				.andExpect(jsonPath("$.quantity").value(7));
 
-		mockMvc.perform(get("/api/products")).andExpect(jsonPath("$.length()").value(1));
+		mockMvc.perform(get("/api/products")).andExpect(jsonPath("$.page.totalElements").value(1));
 	}
 
 	@Test
