@@ -9,19 +9,30 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ilyas.stockapi.demo.DemoDataLoader;
 import com.ilyas.stockapi.repository.AppUserRepository;
+import com.ilyas.stockapi.repository.CustomerRepository;
 import com.ilyas.stockapi.repository.ProductRepository;
+import com.ilyas.stockapi.repository.SaleItemRepository;
 import com.ilyas.stockapi.repository.SaleRepository;
+import com.ilyas.stockapi.repository.StockMovementRepository;
 import com.jayway.jsonpath.JsonPath;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-/** Demo mode as used by the public live demo: its own app context, so its own empty database. */
+/**
+ * Demo mode as used by the public live demo. On H2 this app context has its own database, but in
+ * CI on PostgreSQL every test shares one database: so the shop is loaded from an empty state
+ * before the tests, and removed after them, to leave nothing behind for the other test classes.
+ */
 @SpringBootTest(properties = {"app.demo.enabled=true", "app.demo.password=demo-test-password"})
 @AutoConfigureMockMvc
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class DemoDataTests {
 
 	@Autowired
@@ -38,6 +49,35 @@ class DemoDataTests {
 
 	@Autowired
 	private AppUserRepository userRepository;
+
+	@Autowired
+	private CustomerRepository customerRepository;
+
+	@Autowired
+	private SaleItemRepository saleItemRepository;
+
+	@Autowired
+	private StockMovementRepository stockMovementRepository;
+
+	@BeforeAll
+	void loadDemoShopIntoAnEmptyDatabase() throws Exception {
+		deleteShopData();
+		demoDataLoader.run(null);
+	}
+
+	@AfterAll
+	void removeDemoShop() {
+		deleteShopData();
+		userRepository.findByUsername("demo").ifPresent(userRepository::delete);
+	}
+
+	private void deleteShopData() {
+		stockMovementRepository.deleteAll();
+		saleItemRepository.deleteAll();
+		saleRepository.deleteAll();
+		productRepository.deleteAll();
+		customerRepository.deleteAll();
+	}
 
 	@Test
 	void demoShopIsCreatedWithBothAccounts() {
