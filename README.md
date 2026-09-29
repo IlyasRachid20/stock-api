@@ -15,8 +15,10 @@ error comes back with a clear message.
 - **No overselling, even under load:** the product row is locked while its stock changes, so two sales at the same moment can't both take the last unit.
 - **Clear errors:** `400` with a message per invalid field, `404` for unknown ids, `409` for business conflicts (not enough stock, email already used).
 - **Sales with totals:** each sale returns its items and a computed total.
+- **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
+- **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **54 automated tests** run on every pull request with GitHub Actions.
+- **66 automated tests** run on every pull request with GitHub Actions.
 
 ## Tech stack
 
@@ -72,12 +74,40 @@ erDiagram
 
 Full details, request bodies and a **Try it out** button: http://localhost:8080/swagger-ui.html
 
+### Lists: pagination, search and sorting
+
+Every list endpoint is paginated (20 items per page by default, at most 100) and accepts `page`, `size` and `sort`:
+
+| Endpoint | Filter |
+|---|---|
+| `GET /api/products` | `search`: part of the name, case-insensitive |
+| `GET /api/customers` | `search`: part of the name or email |
+| `GET /api/sales` | `customerId` (newest sales first by default) |
+| `GET /api/sale-items` | `saleId` |
+
+```http
+GET /api/products?search=galaxy&sort=price,desc&page=0&size=20
+```
+```json
+{
+  "content": [
+    {"id": 1, "name": "Galaxy S26", "price": 9500.00, "quantity": 10}
+  ],
+  "page": {"size": 20, "number": 0, "totalElements": 1, "totalPages": 1}
+}
+```
+
 ### Example: selling a product
 
 ```http
+POST /api/sales
+{"customerId": 1}
+
 POST /api/sale-items
-{"sale": {"id": 1}, "product": {"id": 1}, "quantity": 3}
+{"saleId": 1, "productId": 1, "quantity": 3}
 ```
+
+`unitPrice` is optional and defaults to the product's current price.
 
 The product's stock goes from 10 to 7, and the sale now shows its total:
 
@@ -87,10 +117,10 @@ GET /api/sales/1
 ```json
 {
   "id": 1,
-  "customer": {"id": 1, "name": "Ahmed", "email": "ahmed@test.com", "phone": "0600000000"},
+  "customer": {"id": 1, "name": "Ahmed"},
   "saleDate": "2026-09-29T17:11:37",
   "items": [
-    {"id": 1, "product": {"id": 1, "name": "Galaxy S26", "price": 9500.00, "quantity": 7}, "quantity": 3, "unitPrice": 9500.00}
+    {"id": 1, "saleId": 1, "product": {"id": 1, "name": "Galaxy S26"}, "quantity": 3, "unitPrice": 9500.00, "lineTotal": 28500.00}
   ],
   "total": 28500.00
 }
@@ -102,6 +132,10 @@ GET /api/sales/1
 POST /api/sale-items   (quantity 50, only 7 left)
 409 Conflict
 {"error": "Not enough stock for product 'Galaxy S26': 7 available, 50 requested"}
+
+GET /api/products?sort=color
+400 Bad Request
+{"error": "Cannot sort by unknown field 'color'"}
 
 POST /api/products     {"name": "", "price": -5}
 400 Bad Request
@@ -144,14 +178,16 @@ Tests run against an in-memory H2 database, so they need no PostgreSQL and no cr
 src/main/java/com/ilyas/stockapi
 ├── config/        OpenAPI (Swagger) setup
 ├── controller/    REST endpoints and the shared error handler
-├── entity/        JPA entities with validation rules
+├── dto/           Request and response records (the API contract)
+├── entity/        JPA entities (database tables)
 ├── repository/    Spring Data JPA repositories
 └── service/       SaleService: sales and stock in one transaction
 ```
 
 ## Roadmap
 
-- [ ] Request/response DTOs, pagination and search
+- [x] Request/response DTOs
+- [x] Pagination and search
 - [ ] Flyway database migrations and Docker Compose
 - [ ] JWT authentication with `ADMIN` / `CASHIER` roles
 - [ ] Stock movement history and low-stock alerts

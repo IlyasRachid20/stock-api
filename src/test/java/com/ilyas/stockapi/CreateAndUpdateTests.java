@@ -43,10 +43,10 @@ class CreateAndUpdateTests {
 
 		mockMvc.perform(get("/api/products"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(1))
-				.andExpect(jsonPath("$[0].name").value("Galaxy S26"))
-				.andExpect(jsonPath("$[0].price").value(9500.00))
-				.andExpect(jsonPath("$[0].quantity").value(10));
+				.andExpect(jsonPath("$.page.totalElements").value(1))
+				.andExpect(jsonPath("$.content[0].name").value("Galaxy S26"))
+				.andExpect(jsonPath("$.content[0].price").value(9500.00))
+				.andExpect(jsonPath("$.content[0].quantity").value(10));
 	}
 
 	@Test
@@ -61,7 +61,7 @@ class CreateAndUpdateTests {
 				.andExpect(jsonPath("$.price").value(8999.00))
 				.andExpect(jsonPath("$.quantity").value(7));
 
-		mockMvc.perform(get("/api/products")).andExpect(jsonPath("$.length()").value(1));
+		mockMvc.perform(get("/api/products")).andExpect(jsonPath("$.page.totalElements").value(1));
 	}
 
 	@Test
@@ -69,7 +69,7 @@ class CreateAndUpdateTests {
 		long customerId = createAndGetId("/api/customers", "{\"name\":\"Ahmed\",\"email\":\"ahmed@test.com\"}");
 		long productId = createAndGetId("/api/products", "{\"name\":\"Galaxy S26\",\"price\":9500.00,\"quantity\":10}");
 
-		long saleId = createAndGetId("/api/sales", "{\"customer\":{\"id\":" + customerId + "}}");
+		long saleId = createAndGetId("/api/sales", "{\"customerId\":" + customerId + "}");
 
 		mockMvc.perform(get("/api/sales/" + saleId))
 				.andExpect(status().isOk())
@@ -77,12 +77,12 @@ class CreateAndUpdateTests {
 				.andExpect(jsonPath("$.saleDate").isNotEmpty());
 
 		long itemId = createAndGetId("/api/sale-items",
-				"{\"sale\":{\"id\":" + saleId + "},\"product\":{\"id\":" + productId + "},"
+				"{\"saleId\":" + saleId + ",\"productId\":" + productId + ","
 						+ "\"quantity\":2,\"unitPrice\":9500.00}");
 
 		mockMvc.perform(get("/api/sale-items/" + itemId))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.sale.id").value(saleId))
+				.andExpect(jsonPath("$.saleId").value(saleId))
 				.andExpect(jsonPath("$.product.id").value(productId))
 				.andExpect(jsonPath("$.quantity").value(2))
 				.andExpect(jsonPath("$.unitPrice").value(9500.00));

@@ -54,8 +54,8 @@ class SaleTotalFromDatabaseTests {
 	void savedSaleIsReturnedWithItemsTotalAndUpdatedStock() throws Exception {
 		long customerId = idOf(postJson("/api/customers", "{\"name\":\"Ahmed\"}"));
 		long productId = idOf(postJson("/api/products", "{\"name\":\"Galaxy S26\",\"price\":9500.00,\"quantity\":10}"));
-		long saleId = idOf(postJson("/api/sales", "{\"customer\":{\"id\":" + customerId + "}}"));
-		postJson("/api/sale-items", "{\"sale\":{\"id\":" + saleId + "},\"product\":{\"id\":" + productId + "},\"quantity\":2}")
+		long saleId = idOf(postJson("/api/sales", "{\"customerId\":" + customerId + "}"));
+		postJson("/api/sale-items", "{\"saleId\":" + saleId + ",\"productId\":" + productId + ",\"quantity\":2}")
 				.andExpect(status().isOk());
 
 		mockMvc.perform(get("/api/sales/" + saleId))

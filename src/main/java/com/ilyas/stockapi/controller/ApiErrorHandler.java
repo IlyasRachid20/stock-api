@@ -1,5 +1,7 @@
 package com.ilyas.stockapi.controller;
 
+import org.springframework.dao.InvalidDataAccessApiUsageException;
+import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -29,5 +31,19 @@ public class ApiErrorHandler {
     public ResponseEntity<Map<String, String>> handleStatus(ResponseStatusException ex) {
         String message = ex.getReason() != null ? ex.getReason() : HttpStatus.valueOf(ex.getStatusCode().value()).getReasonPhrase();
         return ResponseEntity.status(ex.getStatusCode()).body(Map.of("error", message));
+    }
+
+    // ?sort=unknownField returns 400 instead of a 500
+    @ExceptionHandler({PropertyReferenceException.class, InvalidDataAccessApiUsageException.class})
+    public ResponseEntity<Map<String, String>> handleBadSort(RuntimeException ex) {
+        Throwable cause = ex;
+        while (cause != null && !(cause instanceof PropertyReferenceException)) {
+            cause = cause.getCause();
+        }
+        if (cause == null) {
+            throw ex;
+        }
+        String property = ((PropertyReferenceException) cause).getPropertyName();
+        return ResponseEntity.badRequest().body(Map.of("error", "Cannot sort by unknown field '" + property + "'"));
     }
 }
