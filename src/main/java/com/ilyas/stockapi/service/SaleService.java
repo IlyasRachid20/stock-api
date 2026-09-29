@@ -82,6 +82,7 @@ public class SaleService {
         }
         item.setSale(sale);
         item.setProduct(product);
+        sale.getItems().add(item);
         return saleItemRepository.save(item);
     }
 
@@ -90,6 +91,7 @@ public class SaleService {
         SaleItem item = saleItemRepository.findById(itemId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         returnToStock(item);
+        item.getSale().getItems().remove(item);
         saleItemRepository.delete(item);
     }
 
