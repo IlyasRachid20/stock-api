@@ -11,11 +11,11 @@ public class SaleItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sale_id", nullable = false)
     private Sale sale;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
@@ -25,7 +25,7 @@ public class SaleItem {
     @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal unitPrice;
 
-    // Getters et Setters
+    // Getters and setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

@@ -19,7 +19,7 @@ public class Customer {
     @Column(length = 30)
     private String phone;
 
-    // Getters et Setters
+    // Getters and setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
