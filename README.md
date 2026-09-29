@@ -41,3 +41,6 @@ The API starts on http://localhost:8080.
 ```bash
 ./mvnw test
 ```
+
+Tests run against an in-memory H2 database, so they don't need PostgreSQL
+or any `spring.datasource.*` settings.
