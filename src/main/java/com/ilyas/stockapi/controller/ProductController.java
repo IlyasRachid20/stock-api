@@ -1,7 +1,9 @@
 package com.ilyas.stockapi.controller;
 
+import com.ilyas.stockapi.dto.AdjustmentRequest;
 import com.ilyas.stockapi.dto.ProductRequest;
 import com.ilyas.stockapi.dto.ProductResponse;
+import com.ilyas.stockapi.dto.RestockRequest;
 import com.ilyas.stockapi.service.ProductService;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
@@ -29,6 +31,12 @@ public class ProductController {
         return new PagedModel<>(productService.find(search, pageable));
     }
 
+    // What needs reordering: quantity at or below minQuantity, emptiest first
+    @GetMapping("/low-stock")
+    public PagedModel<ProductResponse> getLowStock(@ParameterObject @PageableDefault(size = 20) Pageable pageable) {
+        return new PagedModel<>(productService.findLowStock(pageable));
+    }
+
     @GetMapping("/{id}")
     public ProductResponse getById(@PathVariable Long id) {
         return productService.get(id);
@@ -44,6 +52,18 @@ public class ProductController {
     @PutMapping("/{id}")
     public ProductResponse update(@PathVariable Long id, @Valid @RequestBody ProductRequest request) {
         return productService.update(id, request);
+    }
+
+    // Goods received: adds to the stock and records a RESTOCK movement (ADMIN only)
+    @PostMapping("/{id}/restock")
+    public ProductResponse restock(@PathVariable Long id, @Valid @RequestBody RestockRequest request) {
+        return productService.restock(id, request);
+    }
+
+    // Correction after a count, damage or loss, with a required reason (ADMIN only)
+    @PostMapping("/{id}/adjustments")
+    public ProductResponse adjust(@PathVariable Long id, @Valid @RequestBody AdjustmentRequest request) {
+        return productService.adjust(id, request);
     }
 
     @DeleteMapping("/{id}")

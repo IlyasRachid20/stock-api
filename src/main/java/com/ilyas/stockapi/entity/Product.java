@@ -20,6 +20,10 @@ public class Product {
     @Column(nullable = false)
     private Integer quantity = 0;
 
+    // Low-stock alert when quantity is at or below this level
+    @Column(name = "min_quantity", nullable = false)
+    private Integer minQuantity = 0;
+
     // Getters and setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -32,4 +36,9 @@ public class Product {
 
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
+
+    public Integer getMinQuantity() { return minQuantity; }
+    public void setMinQuantity(Integer minQuantity) { this.minQuantity = minQuantity; }
+
+    public boolean isLowStock() { return quantity <= minQuantity; }
 }

@@ -12,6 +12,8 @@ error comes back with a clear message.
 ## Highlights
 
 - **Secure by default:** every endpoint needs a JWT from `POST /api/auth/login`; passwords are stored as BCrypt hashes; `ADMIN` and `CASHIER` roles.
+- **Full stock history:** every change (initial stock, restock, correction, sale, cancelled sale) is recorded with the quantity before and after, who made it and when. When stock doesn't add up, the history shows why.
+- **Low-stock alerts:** each product has a minimum level; `GET /api/products/low-stock` lists what needs reordering, emptiest first.
 - **Stock always in sync:** selling an item takes it out of stock; deleting an item or a whole sale puts it back.
 - **No overselling, even under load:** the product row is locked while its stock changes (by a sale or a product update), so two requests at the same moment can't both take the last unit or overwrite each other's stock.
 - **Fast lists:** related rows are loaded in batches, so a page of sales takes at most 5 queries instead of one per sale, item and product (41 before). A test fails if this regresses.
@@ -22,7 +24,7 @@ error comes back with a clear message.
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **120 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
+- **131 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
 
 ## Tech stack
 
@@ -74,7 +76,8 @@ erDiagram
 | Resource | Endpoints |
 |---|---|
 | Customers | `GET/POST /api/customers` · `GET/PUT/DELETE /api/customers/{id}` |
-| Products | `GET/POST /api/products` · `GET/PUT/DELETE /api/products/{id}` |
+| Products | `GET/POST /api/products` · `GET/PUT/DELETE /api/products/{id}` · `GET /api/products/low-stock` · `POST /api/products/{id}/restock` · `POST /api/products/{id}/adjustments` |
+| Stock history | `GET /api/stock-movements?productId=&type=` (newest first) |
 | Sales | `GET/POST /api/sales` · `GET/DELETE /api/sales/{id}` |
 | Sale items | `GET/POST /api/sale-items` · `GET/DELETE /api/sale-items/{id}` |
 | Auth | `POST /api/auth/login` (public) · `GET /api/auth/me` |
@@ -109,6 +112,8 @@ On first start, when there are no users, an `admin` account is created with the 
 | Register and update customers | yes | yes |
 | Create sales and add items | yes | yes |
 | Create, update or delete products (prices, stock) | yes | no |
+| Restock, adjust stock | yes | no |
+| Read stock history and low-stock list | yes | yes |
 | Delete customers, sales or sale items | yes | no |
 | Manage user accounts | yes | no |
 
@@ -165,6 +170,26 @@ GET /api/sales/1
   "total": 28500.00
 }
 ```
+
+### Stock history
+
+```http
+POST /api/products/1/restock        {"quantity": 20, "reason": "Delivery #42"}
+POST /api/products/1/adjustments    {"quantityChange": -1, "reason": "Broken screen"}
+GET  /api/stock-movements?productId=1
+```
+```json
+{
+  "content": [
+    {"type": "ADJUSTMENT", "quantityChange": -1, "quantityAfter": 26, "reason": "Broken screen", "createdBy": "admin", "createdAt": "2026-09-29T22:20:00Z", ...},
+    {"type": "RESTOCK", "quantityChange": 20, "quantityAfter": 27, "reason": "Delivery #42", "createdBy": "admin", ...},
+    {"type": "SALE", "quantityChange": -3, "quantityAfter": 7, "reason": "Sale 12", "saleItemId": 31, "createdBy": "sara", ...}
+  ],
+  "page": {...}
+}
+```
+
+Movement types: `INITIAL`, `RESTOCK`, `ADJUSTMENT`, `SALE`, `SALE_CANCELLED`. History rows are only ever added, never edited.
 
 ### Error responses
 
@@ -251,7 +276,8 @@ src/main/resources/db/migration
 ├── V1__create_tables.sql
 ├── V2__add_foreign_key_indexes.sql
 ├── V3__sale_date_with_time_zone.sql
-└── V4__create_app_users.sql
+├── V4__create_app_users.sql
+└── V5__stock_movements_and_min_quantity.sql
 ```
 
 ## Roadmap
@@ -262,7 +288,7 @@ src/main/resources/db/migration
 - [x] Docker Compose
 - [x] JWT authentication with `ADMIN` / `CASHIER` roles
 - [x] Per-role access rules for products, customers and sales
-- [ ] Stock movement history and low-stock alerts
+- [x] Stock movement history and low-stock alerts
 - [ ] Sales reports and CSV/PDF export
 - [ ] Live demo
 - [ ] Web dashboard
