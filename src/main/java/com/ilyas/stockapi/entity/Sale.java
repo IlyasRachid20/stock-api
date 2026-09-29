@@ -2,7 +2,7 @@ package com.ilyas.stockapi.entity;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,7 +19,7 @@ public class Sale {
     private Customer customer;
 
     @Column(name = "sale_date", nullable = false)
-    private LocalDateTime saleDate = LocalDateTime.now();
+    private Instant saleDate = Instant.now();
 
     @OneToMany(mappedBy = "sale")
     private List<SaleItem> items = new ArrayList<>();
@@ -31,8 +31,8 @@ public class Sale {
     public Customer getCustomer() { return customer; }
     public void setCustomer(Customer customer) { this.customer = customer; }
 
-    public LocalDateTime getSaleDate() { return saleDate; }
-    public void setSaleDate(LocalDateTime saleDate) { this.saleDate = saleDate; }
+    public Instant getSaleDate() { return saleDate; }
+    public void setSaleDate(Instant saleDate) { this.saleDate = saleDate; }
 
     public List<SaleItem> getItems() { return items; }
 

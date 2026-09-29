@@ -75,6 +75,7 @@ jobs:
           psql -d legacy -At -c "select version || ' ' || type from flyway_schema_history order by installed_rank" | tee history.txt
           grep -qx "1 BASELINE" history.txt
           grep -qx "2 SQL" history.txt
+          grep -qx "3 SQL" history.txt
 
   # Builds the Docker image and starts the full stack with Docker Compose,
   # then sends real requests to check it works end to end.
