@@ -3,6 +3,7 @@ package com.ilyas.stockapi.controller;
 import com.ilyas.stockapi.dto.LoginRequest;
 import com.ilyas.stockapi.dto.LoginResponse;
 import com.ilyas.stockapi.security.TokenService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,6 +26,8 @@ public class AuthController {
 
     // A wrong username, a wrong password and a disabled account all return the same 401,
     // so the response doesn't reveal which usernames exist
+    // @SecurityRequirements() with nothing inside: Swagger UI never sends the token here
+    @SecurityRequirements()
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(

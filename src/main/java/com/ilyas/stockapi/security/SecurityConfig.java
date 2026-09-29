@@ -23,21 +23,34 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableConfigurationProperties(SecurityProperties.class)
 public class SecurityConfig {
 
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
+
+    // Open to everyone, with or without a token
+    private static final String[] PUBLIC_PATHS = {
+            "/api/auth/login", "/actuator/health", "/error",
+            "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**"
+    };
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
@@ -49,8 +62,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Public: logging in, the health check and the API documentation
-                        .requestMatchers("/api/auth/login", "/actuator/health", "/error").permitAll()
-                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers(PUBLIC_PATHS).permitAll()
                         // Only admins manage user accounts
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
 
@@ -68,6 +80,7 @@ public class SecurityConfig {
                         // Anything outside /api still needs a valid token
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
+                        .bearerTokenResolver(ignoringPublicPaths())
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
                         .authenticationEntryPoint(unauthorized())
                         .accessDeniedHandler(forbidden()))
@@ -128,10 +141,25 @@ public class SecurityConfig {
         return converter;
     }
 
-    // Same {"error": "..."} shape as every other API error
+    // Public paths don't read the Authorization header at all. Otherwise an expired or broken
+    // token (e.g. one Swagger UI still sends after 8 hours) would get a 401 on the login
+    // request itself, the one request meant to get a new token.
+    private static BearerTokenResolver ignoringPublicPaths() {
+        DefaultBearerTokenResolver defaultResolver = new DefaultBearerTokenResolver();
+        List<RequestMatcher> matchers = Arrays.stream(PUBLIC_PATHS)
+                .map(path -> (RequestMatcher) PathPatternRequestMatcher.withDefaults().matcher(path))
+                .toList();
+        RequestMatcher publicPaths = new OrRequestMatcher(matchers);
+        return request -> publicPaths.matches(request) ? null : defaultResolver.resolve(request);
+    }
+
+    // Same {"error": "..."} shape as every other API error. A token that was sent but is invalid
+    // or expired gets its own message, so the client knows to log in again.
     private static AuthenticationEntryPoint unauthorized() {
         return (request, response, ex) -> writeError(response, HttpServletResponse.SC_UNAUTHORIZED,
-                "Authentication required: log in and send the token as 'Authorization: Bearer <token>'");
+                request.getHeader("Authorization") != null
+                        ? "Invalid or expired token: log in again with POST /api/auth/login"
+                        : "Authentication required: log in and send the token as 'Authorization: Bearer <token>'");
     }
 
     private static AccessDeniedHandler forbidden() {
