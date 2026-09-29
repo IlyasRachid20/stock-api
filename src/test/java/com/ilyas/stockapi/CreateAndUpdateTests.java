@@ -92,14 +92,14 @@ class CreateAndUpdateTests {
 	void deletedCustomerIsGone() throws Exception {
 		long id = createAndGetId("/api/customers", "{\"name\":\"Ahmed\"}");
 
-		mockMvc.perform(delete("/api/customers/" + id)).andExpect(status().isOk());
+		mockMvc.perform(delete("/api/customers/" + id)).andExpect(status().isNoContent());
 
 		mockMvc.perform(get("/api/customers/" + id)).andExpect(status().isNotFound());
 	}
 
 	private long createAndGetId(String path, String body) throws Exception {
 		ResultActions result = mockMvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content(body))
-				.andExpect(status().isOk())
+				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.id").isNumber());
 		Number id = JsonPath.read(result.andReturn().getResponse().getContentAsString(), "$.id");
 		return id.longValue();

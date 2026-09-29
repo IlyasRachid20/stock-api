@@ -127,7 +127,7 @@ class PaginationAndSearchTests {
 
 	private ResultActions postJson(String path, String body) throws Exception {
 		return mockMvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content(body))
-				.andExpect(status().isOk());
+				.andExpect(status().isCreated());
 	}
 
 	private long idOf(ResultActions result) throws Exception {

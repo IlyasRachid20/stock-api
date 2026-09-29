@@ -37,7 +37,7 @@ class StockTests {
 
 	@Test
 	void sellingTakesQuantityOutOfStock() throws Exception {
-		addItem(3, null).andExpect(status().isOk());
+		addItem(3, null).andExpect(status().isCreated());
 
 		expectStock(7);
 	}
@@ -54,7 +54,7 @@ class StockTests {
 
 	@Test
 	void sellingExactlyTheWholeStockIsAllowed() throws Exception {
-		addItem(10, null).andExpect(status().isOk());
+		addItem(10, null).andExpect(status().isCreated());
 
 		expectStock(0);
 		addItem(1, null).andExpect(status().isConflict());
@@ -63,14 +63,14 @@ class StockTests {
 	@Test
 	void unitPriceDefaultsToProductPrice() throws Exception {
 		addItem(1, null)
-				.andExpect(status().isOk())
+				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.unitPrice").value(9500.00));
 	}
 
 	@Test
 	void givenUnitPriceIsKept() throws Exception {
 		addItem(1, "8999.00")
-				.andExpect(status().isOk())
+				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.unitPrice").value(8999.00));
 	}
 
@@ -79,18 +79,18 @@ class StockTests {
 		long itemId = idOf(addItem(4, null));
 		expectStock(6);
 
-		mockMvc.perform(delete("/api/sale-items/" + itemId)).andExpect(status().isOk());
+		mockMvc.perform(delete("/api/sale-items/" + itemId)).andExpect(status().isNoContent());
 
 		expectStock(10);
 	}
 
 	@Test
 	void deletingSalePutsAllItemsBackInStock() throws Exception {
-		addItem(2, null).andExpect(status().isOk());
-		addItem(3, null).andExpect(status().isOk());
+		addItem(2, null).andExpect(status().isCreated());
+		addItem(3, null).andExpect(status().isCreated());
 		expectStock(5);
 
-		mockMvc.perform(delete("/api/sales/" + saleId)).andExpect(status().isOk());
+		mockMvc.perform(delete("/api/sales/" + saleId)).andExpect(status().isNoContent());
 
 		expectStock(10);
 		mockMvc.perform(get("/api/sales/" + saleId)).andExpect(status().isNotFound());

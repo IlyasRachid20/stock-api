@@ -45,11 +45,13 @@ public class SaleController {
     }
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public SaleResponse create(@Valid @RequestBody SaleRequest request) {
         return SaleResponse.from(saleService.createSale(request));
     }
 
     @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         saleService.deleteSale(id);
     }

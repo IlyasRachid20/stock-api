@@ -43,6 +43,7 @@ public class ProductController {
     }
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public ProductResponse create(@Valid @RequestBody ProductRequest request) {
         Product product = new Product();
         product.setName(request.name());
@@ -64,6 +65,7 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         Product product = findOrThrow(id);
         long sold = saleItemRepository.countByProductId(id);

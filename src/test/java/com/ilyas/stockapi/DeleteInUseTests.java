@@ -57,15 +57,15 @@ class DeleteInUseTests {
 
 	@Test
 	void productAndCustomerCanBeDeletedOnceTheirSalesAreGone() throws Exception {
-		mockMvc.perform(delete("/api/sales/" + saleId)).andExpect(status().isOk());
+		mockMvc.perform(delete("/api/sales/" + saleId)).andExpect(status().isNoContent());
 
-		mockMvc.perform(delete("/api/products/" + productId)).andExpect(status().isOk());
-		mockMvc.perform(delete("/api/customers/" + customerId)).andExpect(status().isOk());
+		mockMvc.perform(delete("/api/products/" + productId)).andExpect(status().isNoContent());
+		mockMvc.perform(delete("/api/customers/" + customerId)).andExpect(status().isNoContent());
 	}
 
 	private ResultActions postJson(String path, String body) throws Exception {
 		return mockMvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content(body))
-				.andExpect(status().isOk());
+				.andExpect(status().isCreated());
 	}
 
 	private long idOf(ResultActions result) throws Exception {
