@@ -2,6 +2,7 @@ package com.ilyas.stockapi.controller;
 
 import com.ilyas.stockapi.entity.Sale;
 import com.ilyas.stockapi.repository.SaleRepository;
+import com.ilyas.stockapi.service.SaleService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -14,9 +15,11 @@ import java.util.List;
 public class SaleController {
 
     private final SaleRepository saleRepository;
+    private final SaleService saleService;
 
-    public SaleController(SaleRepository saleRepository) {
+    public SaleController(SaleRepository saleRepository, SaleService saleService) {
         this.saleRepository = saleRepository;
+        this.saleService = saleService;
     }
 
     @GetMapping
@@ -32,14 +35,11 @@ public class SaleController {
 
     @PostMapping
     public Sale create(@Valid @RequestBody Sale sale) {
-        return saleRepository.save(sale);
+        return saleService.createSale(sale);
     }
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
-        if (!saleRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-        }
-        saleRepository.deleteById(id);
+        saleService.deleteSale(id);
     }
 }

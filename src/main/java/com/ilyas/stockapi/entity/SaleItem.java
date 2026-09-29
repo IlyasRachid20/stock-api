@@ -30,7 +30,7 @@ public class SaleItem {
     @Column(nullable = false)
     private Integer quantity;
 
-    @NotNull
+    // Optional in requests: defaults to the product's current price
     @DecimalMin("0.00")
     @Digits(integer = 8, fraction = 2)
     @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
