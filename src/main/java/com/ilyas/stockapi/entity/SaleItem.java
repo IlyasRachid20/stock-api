@@ -1,5 +1,6 @@
 package com.ilyas.stockapi.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -17,6 +18,7 @@ public class SaleItem {
 
     @NotNull
     @ManyToOne
+    @JsonIgnoreProperties({"items", "total"})
     @JoinColumn(name = "sale_id", nullable = false)
     private Sale sale;
 
