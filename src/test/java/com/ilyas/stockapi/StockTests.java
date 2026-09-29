@@ -49,7 +49,7 @@ class StockTests {
 				.andExpect(jsonPath("$.error").value("Not enough stock for product 'Galaxy S26': 10 available, 11 requested"));
 
 		expectStock(10);
-		mockMvc.perform(get("/api/sale-items")).andExpect(jsonPath("$.length()").value(0));
+		mockMvc.perform(get("/api/sale-items")).andExpect(jsonPath("$.page.totalElements").value(0));
 	}
 
 	@Test
@@ -94,7 +94,7 @@ class StockTests {
 
 		expectStock(10);
 		mockMvc.perform(get("/api/sales/" + saleId)).andExpect(status().isNotFound());
-		mockMvc.perform(get("/api/sale-items")).andExpect(jsonPath("$.length()").value(0));
+		mockMvc.perform(get("/api/sale-items")).andExpect(jsonPath("$.page.totalElements").value(0));
 	}
 
 	@Test

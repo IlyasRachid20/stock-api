@@ -5,11 +5,13 @@ import com.ilyas.stockapi.dto.ProductResponse;
 import com.ilyas.stockapi.entity.Product;
 import com.ilyas.stockapi.repository.ProductRepository;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/products")
@@ -21,9 +23,15 @@ public class ProductController {
         this.productRepository = productRepository;
     }
 
+    // GET /api/products?search=galaxy&page=0&size=20&sort=price,desc
     @GetMapping
-    public List<ProductResponse> getAll() {
-        return productRepository.findAll().stream().map(ProductResponse::from).toList();
+    public PagedModel<ProductResponse> getAll(
+            @RequestParam(required = false) String search,
+            @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
+        var page = (search == null || search.isBlank())
+                ? productRepository.findAll(pageable)
+                : productRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
+        return new PagedModel<>(page.map(ProductResponse::from));
     }
 
     @GetMapping("/{id}")

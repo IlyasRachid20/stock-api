@@ -5,11 +5,13 @@ import com.ilyas.stockapi.dto.CustomerResponse;
 import com.ilyas.stockapi.entity.Customer;
 import com.ilyas.stockapi.repository.CustomerRepository;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/customers")
@@ -21,9 +23,15 @@ public class CustomerController {
         this.customerRepository = customerRepository;
     }
 
+    // GET /api/customers?search=ahmed&page=0&size=20 (search matches name or email)
     @GetMapping
-    public List<CustomerResponse> getAll() {
-        return customerRepository.findAll().stream().map(CustomerResponse::from).toList();
+    public PagedModel<CustomerResponse> getAll(
+            @RequestParam(required = false) String search,
+            @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
+        var page = (search == null || search.isBlank())
+                ? customerRepository.findAll(pageable)
+                : customerRepository.search(search.trim(), pageable);
+        return new PagedModel<>(page.map(CustomerResponse::from));
     }
 
     @GetMapping("/{id}")

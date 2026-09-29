@@ -51,7 +51,7 @@ class NotFoundTests {
 				.content("{\"name\":\"Ghost\",\"price\":1.00,\"quantity\":1}"))
 				.andExpect(status().isNotFound());
 
-		mockMvc.perform(get("/api/products")).andExpect(jsonPath("$.length()").value(0));
+		mockMvc.perform(get("/api/products")).andExpect(jsonPath("$.page.totalElements").value(0));
 	}
 
 	@Test
