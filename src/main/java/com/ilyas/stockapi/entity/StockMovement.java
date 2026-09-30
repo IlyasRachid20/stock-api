@@ -66,4 +66,5 @@ public class StockMovement {
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
 
     public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 }

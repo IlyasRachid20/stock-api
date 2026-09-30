@@ -1,7 +1,7 @@
 package com.ilyas.stockapi;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -82,7 +82,7 @@ class DemoDataTests {
 	@Test
 	void demoShopIsCreatedWithBothAccounts() {
 		assertThat(productRepository.count()).isEqualTo(8);
-		assertThat(saleRepository.count()).isEqualTo(4);
+		assertThat(saleRepository.count()).isBetween(30L, 90L);
 		// The admin account must still be created first, even though the demo account exists too
 		assertThat(userRepository.findByUsername("admin")).isPresent();
 		assertThat(userRepository.findByUsername("demo")).hasValueSatisfying(
@@ -91,10 +91,11 @@ class DemoDataTests {
 
 	@Test
 	void runningAgainAddsNothing() throws Exception {
+		long salesBefore = saleRepository.count();
 		demoDataLoader.run(null);
 
 		assertThat(productRepository.count()).isEqualTo(8);
-		assertThat(saleRepository.count()).isEqualTo(4);
+		assertThat(saleRepository.count()).isEqualTo(salesBefore);
 	}
 
 	@Test
@@ -108,12 +109,36 @@ class DemoDataTests {
 		// Sales took stock out, so a few products are low: something to show on the low-stock list
 		mockMvc.perform(get("/api/products/low-stock").header("Authorization", token))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.content[*].name", containsInAnyOrder("Phone Case", "AirPods Pro 3", "Screen Protector")));
+				.andExpect(jsonPath("$.page.totalElements", greaterThan(0)));
 		mockMvc.perform(get("/api/stock-movements?type=SALE").header("Authorization", token))
-				.andExpect(jsonPath("$.page.totalElements").value(8));
+				.andExpect(jsonPath("$.page.totalElements", greaterThan(30)));
 		mockMvc.perform(post("/api/products/1/restock").header("Authorization", token)
 						.contentType(MediaType.APPLICATION_JSON).content("{\"quantity\":5}"))
 				.andExpect(status().isForbidden());
+	}
+
+	// Sales are spread over the last 30 days, and the history holds a restock and a correction,
+	// so the dashboard chart and the stock history look like a real month in the shop
+	@Test
+	void theDemoMonthIsSpreadOverThirtyDays() {
+		var days = saleRepository.findAll().stream()
+				.map(sale -> sale.getSaleDate().atZone(java.time.ZoneOffset.UTC).toLocalDate())
+				.collect(java.util.stream.Collectors.toSet());
+		assertThat(days.size()).isGreaterThanOrEqualTo(25);
+		assertThat(saleRepository.findAll()).allMatch(sale -> sale.getSaleDate().isBefore(java.time.Instant.now()));
+		// Sale numbers follow the clock: a later sale never has an earlier date
+		var byId = saleRepository.findAll(org.springframework.data.domain.Sort.by("id"));
+		for (int i = 1; i < byId.size(); i++) {
+			assertThat(byId.get(i).getSaleDate()).isAfterOrEqualTo(byId.get(i - 1).getSaleDate());
+		}
+
+		var movements = stockMovementRepository.findAll();
+		assertThat(movements).anyMatch(m -> m.getType().name().equals("RESTOCK") && "Delivery #1042".equals(m.getReason()));
+		assertThat(movements).anyMatch(m -> m.getType().name().equals("ADJUSTMENT") && m.getQuantityChange() == -3);
+		// A sale's stock movement carries the same (moved back) date as the sale
+		var sale = saleRepository.findAll().get(0);
+		var itemIds = saleItemRepository.findBySaleId(sale.getId()).stream().map(i -> i.getId()).toList();
+		assertThat(stockMovementRepository.findBySaleItemIdIn(itemIds)).allMatch(m -> m.getCreatedAt().equals(sale.getSaleDate()));
 	}
 
 }

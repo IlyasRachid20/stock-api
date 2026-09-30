@@ -7,7 +7,7 @@ import { api, download } from '../api/client'
 import type { DailySales, Page, Product, SalesSummary, TopProduct } from '../api/types'
 import { useAuth } from '../auth/useAuth'
 import { QueryState } from '../components/QueryState'
-import { daysAgo, formatDay, formatInteger, formatMoney } from '../utils/format'
+import { daysAgo, formatCompact, formatDay, formatInteger, formatMoney } from '../utils/format'
 
 const PERIODS = [
   { label: '7 days', value: '7' },
@@ -77,6 +77,8 @@ function SalesReports() {
               curveType="monotone"
               withDots={false}
               valueFormatter={formatMoney}
+              // The full "MAD 36,000.00" doesn't fit the axis: short amounts there, full ones in the tooltip
+              yAxisProps={{ tickFormatter: formatCompact, width: 48 }}
             />
           </QueryState>
         </Card>

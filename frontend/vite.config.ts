@@ -19,6 +19,8 @@ export default defineConfig({
     // Threads start reliably on Windows, where forked workers can time out while starting
     pool: 'threads',
     setupFiles: './src/test/setup.ts',
+    // Full user flows (e.g. building a sale) take a few seconds; 15 s leaves room on a busy machine
+    testTimeout: 15_000,
     css: false,
   },
 })

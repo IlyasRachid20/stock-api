@@ -7,6 +7,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+
 public interface StockMovementRepository extends JpaRepository<StockMovement, Long> {
 
     // Each filter is optional: null means "any"
@@ -17,4 +21,8 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
     // Loads the rows and removes them one by one (not a bulk query), so Hibernate's
     // in-memory state stays consistent with the database
     void deleteByProductId(Long productId);
+
+    List<StockMovement> findBySaleItemIdIn(Collection<Long> saleItemIds);
+
+    Optional<StockMovement> findTopByProductIdOrderByIdDesc(Long productId);
 }

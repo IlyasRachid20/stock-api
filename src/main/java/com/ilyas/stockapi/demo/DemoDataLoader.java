@@ -1,13 +1,18 @@
 package com.ilyas.stockapi.demo;
 
+import com.ilyas.stockapi.dto.AdjustmentRequest;
 import com.ilyas.stockapi.dto.CustomerRequest;
 import com.ilyas.stockapi.dto.ProductRequest;
-import com.ilyas.stockapi.dto.SaleItemRequest;
+import com.ilyas.stockapi.dto.RestockRequest;
+import com.ilyas.stockapi.dto.SaleItemResponse;
 import com.ilyas.stockapi.dto.SaleRequest;
+import com.ilyas.stockapi.dto.SaleResponse;
 import com.ilyas.stockapi.dto.UserRequest;
 import com.ilyas.stockapi.entity.Role;
 import com.ilyas.stockapi.repository.AppUserRepository;
 import com.ilyas.stockapi.repository.ProductRepository;
+import com.ilyas.stockapi.repository.SaleRepository;
+import com.ilyas.stockapi.repository.StockMovementRepository;
 import com.ilyas.stockapi.service.CustomerService;
 import com.ilyas.stockapi.service.ProductService;
 import com.ilyas.stockapi.service.SaleService;
@@ -22,13 +27,22 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Random;
+import java.util.Set;
 
 /**
- * Fills an empty database with a small shop, so the public demo shows real data right away.
- * Only active with app.demo.enabled=true (APP_DEMO_DATA). Goes through the normal services,
- * so sales take stock out and everything appears in the stock history.
+ * Fills an empty database with a small phone shop and 30 days of activity, so the public demo
+ * shows real charts, best sellers, low-stock alerts and stock history right away.
+ * Only active with app.demo.enabled=true (APP_DEMO_DATA). Everything goes through the normal
+ * services (stock checks, history), then dates are moved back so the month looks lived-in.
+ * A fixed random seed makes the generated shop the same on every start.
  */
 @Component
 @ConditionalOnProperty(name = "app.demo.enabled", havingValue = "true")
@@ -36,9 +50,12 @@ import java.util.List;
 public class DemoDataLoader implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DemoDataLoader.class);
+    private static final int DAYS = 30;
 
     private final ProductRepository productRepository;
     private final AppUserRepository userRepository;
+    private final SaleRepository saleRepository;
+    private final StockMovementRepository movementRepository;
     private final ProductService productService;
     private final CustomerService customerService;
     private final SaleService saleService;
@@ -46,10 +63,13 @@ public class DemoDataLoader implements ApplicationRunner {
     private final String demoPassword;
 
     public DemoDataLoader(ProductRepository productRepository, AppUserRepository userRepository,
+            SaleRepository saleRepository, StockMovementRepository movementRepository,
             ProductService productService, CustomerService customerService, SaleService saleService,
             UserService userService, @Value("${app.demo.password:}") String demoPassword) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
+        this.saleRepository = saleRepository;
+        this.movementRepository = movementRepository;
         this.productService = productService;
         this.customerService = customerService;
         this.saleService = saleService;
@@ -67,27 +87,62 @@ public class DemoDataLoader implements ApplicationRunner {
             return;
         }
 
-        // name, price, stock, minimum level: some products end up on the low-stock list
-        List<Long> products = new ArrayList<>();
-        products.add(product("Galaxy S26", "9500.00", 12, 3));
-        products.add(product("iPhone 17", "12900.00", 8, 3));
-        products.add(product("Redmi Note 15", "2899.00", 25, 5));
-        products.add(product("AirPods Pro 3", "2690.00", 4, 5));
-        products.add(product("USB-C Charger 45W", "199.00", 40, 10));
-        products.add(product("USB-C Cable 1m", "49.90", 60, 15));
-        products.add(product("Screen Protector", "79.00", 6, 10));
-        products.add(product("Phone Case", "129.00", 0, 5));
+        Instant firstDay = LocalDate.now(ZoneOffset.UTC).minusDays(DAYS - 1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        Random random = new Random(42);
 
-        long ahmed = customer("Ahmed Benali", "ahmed.benali@example.com", "0600000001");
-        long sara = customer("Sara El Idrissi", "sara.elidrissi@example.com", "0600000002");
-        long youssef = customer("Youssef Amrani", null, "0600000003");
+        // name, price, initial stock, minimum level: phones first, then accessories
+        List<Long> products = List.of(
+                product("Galaxy S26", "9500.00", 30, 5),
+                product("iPhone 17", "12900.00", 16, 5),
+                product("Redmi Note 15", "2899.00", 45, 8),
+                product("AirPods Pro 3", "2690.00", 18, 6),
+                product("USB-C Charger 45W", "199.00", 90, 15),
+                product("USB-C Cable 1m", "49.90", 60, 20),
+                product("Screen Protector", "79.00", 55, 15),
+                product("Phone Case", "129.00", 35, 10));
+        // The initial stock arrived the day before the first sale
+        movementRepository.findAll().forEach(m -> {
+            m.setCreatedAt(firstDay.minus(Duration.ofHours(14)));
+            movementRepository.save(m);
+        });
 
-        sale(ahmed, products.get(0), 1, products.get(4), 1);
-        sale(sara, products.get(1), 1, products.get(3), 1);
-        sale(youssef, products.get(2), 2, products.get(5), 3);
-        sale(ahmed, products.get(6), 2, products.get(5), 1);
+        List<Long> customers = List.of(
+                customer("Ahmed Benali", "ahmed.benali@example.com", "0600000001"),
+                customer("Sara El Idrissi", "sara.elidrissi@example.com", "0600000002"),
+                customer("Youssef Amrani", null, "0600000003"),
+                customer("Khadija Ouazzani", "khadija.ouazzani@example.com", null),
+                customer("Omar Tazi", "omar.tazi@example.com", "0600000005"),
+                customer("Salma Berrada", null, "0600000006"));
 
-        log.info("Demo mode: added {} products, 3 customers and 4 sales", products.size());
+        int sales = 0;
+        for (int day = 0; day < DAYS; day++) {
+            Instant dayStart = firstDay.plus(Duration.ofDays(day));
+            if (day == 12) {
+                backdate(productService.restock(products.get(5), new RestockRequest(80, "Delivery #1042")).id(),
+                        dayStart.plus(Duration.ofHours(8)));
+            }
+            if (day == 20) {
+                backdate(productService.adjust(products.get(6), new AdjustmentRequest(-3, "Broken during delivery")).id(),
+                        dayStart.plus(Duration.ofHours(8)));
+            }
+            // Opening hours 9:00-19:00, in time order so sale numbers follow the clock,
+            // and never later than now (today's sales must not be in the future)
+            List<Instant> times = new ArrayList<>();
+            int salesToday = 1 + random.nextInt(3);
+            for (int s = 0; s < salesToday; s++) {
+                times.add(dayStart.plus(Duration.ofMinutes(9 * 60 + random.nextInt(10 * 60))));
+            }
+            Instant latest = Instant.now().minus(Duration.ofMinutes(5));
+            for (Instant time : times.stream().sorted().toList()) {
+                Instant when = time.isAfter(latest) ? latest : time;
+                if (sale(customers.get(random.nextInt(customers.size())), products, random, when)) {
+                    sales++;
+                }
+            }
+        }
+
+        log.info("Demo mode: added {} products, {} customers and {} sales over {} days",
+                products.size(), customers.size(), sales, DAYS);
     }
 
     private long product(String name, String price, int quantity, int minQuantity) {
@@ -98,9 +153,44 @@ public class DemoDataLoader implements ApplicationRunner {
         return customerService.create(new CustomerRequest(name, email, phone)).id();
     }
 
-    private void sale(long customerId, long product1, int quantity1, long product2, int quantity2) {
-        long saleId = saleService.createSale(new SaleRequest(customerId)).id();
-        saleService.addItem(new SaleItemRequest(saleId, product1, quantity1, null));
-        saleService.addItem(new SaleItemRequest(saleId, product2, quantity2, null));
+    // One to three different products; phones sell one at a time, accessories up to three.
+    // Lines the stock can't cover are left out, so the demo never fails on a sold-out product.
+    private boolean sale(long customerId, List<Long> products, Random random, Instant when) {
+        Set<Integer> picked = new LinkedHashSet<>();
+        int lines = 1 + random.nextInt(3);
+        while (picked.size() < lines) {
+            picked.add(random.nextInt(products.size()));
+        }
+        List<SaleRequest.Item> items = new ArrayList<>();
+        for (int index : picked) {
+            int quantity = index < 4 ? 1 : 1 + random.nextInt(3);
+            int inStock = productRepository.findById(products.get(index)).orElseThrow().getQuantity();
+            if (inStock >= quantity) {
+                items.add(new SaleRequest.Item(products.get(index), quantity, null));
+            }
+        }
+        if (items.isEmpty()) {
+            return false;
+        }
+        SaleResponse sale = saleService.createSale(new SaleRequest(customerId, items));
+
+        saleRepository.findById(sale.id()).ifPresent(s -> {
+            s.setSaleDate(when);
+            saleRepository.save(s);
+        });
+        List<Long> itemIds = sale.items().stream().map(SaleItemResponse::id).toList();
+        movementRepository.findBySaleItemIdIn(itemIds).forEach(m -> {
+            m.setCreatedAt(when);
+            movementRepository.save(m);
+        });
+        return true;
+    }
+
+    // Moves the latest stock movement of a product (a restock or a correction just made) back in time
+    private void backdate(long productId, Instant when) {
+        movementRepository.findTopByProductIdOrderByIdDesc(productId).ifPresent(m -> {
+            m.setCreatedAt(when);
+            movementRepository.save(m);
+        });
     }
 }
