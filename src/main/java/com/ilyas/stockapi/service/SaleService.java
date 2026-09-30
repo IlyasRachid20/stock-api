@@ -21,6 +21,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.Comparator;
+
 /**
  * Creates and deletes sales and sale items while keeping product stock in sync:
  * selling an item takes its quantity out of stock, and deleting it puts the quantity back.
@@ -73,7 +76,14 @@ public class SaleService {
                 .orElseThrow(() -> new BadRequestException("Customer " + request.customerId() + " does not exist"));
         Sale sale = new Sale();
         sale.setCustomer(customer);
-        return SaleResponse.from(saleRepository.save(sale));
+        saleRepository.save(sale);
+        if (request.items() != null) {
+            // Same order in every sale, so two sales locking the same products can't deadlock
+            request.items().stream()
+                    .sorted(Comparator.comparing(SaleRequest.Item::productId))
+                    .forEach(item -> sell(sale, item.productId(), item.quantity(), item.unitPrice()));
+        }
+        return SaleResponse.from(sale);
     }
 
     @Transactional
@@ -90,26 +100,31 @@ public class SaleService {
     public SaleItemResponse addItem(SaleItemRequest request) {
         Sale sale = saleRepository.findById(request.saleId())
                 .orElseThrow(() -> new BadRequestException("Sale " + request.saleId() + " does not exist"));
+        return SaleItemResponse.from(sell(sale, request.productId(), request.quantity(), request.unitPrice()));
+    }
 
+    // Takes the quantity out of stock and adds the line to the sale; throws (and so rolls back
+    // the whole transaction) if the product doesn't exist or is short of stock
+    private SaleItem sell(Sale sale, Long productId, int quantity, BigDecimal unitPrice) {
         // Lock the product row so two sales at the same time can't both take the last units
-        Product product = productRepository.findByIdForUpdate(request.productId())
-                .orElseThrow(() -> new BadRequestException("Product " + request.productId() + " does not exist"));
+        Product product = productRepository.findByIdForUpdate(productId)
+                .orElseThrow(() -> new BadRequestException("Product " + productId + " does not exist"));
 
-        if (product.getQuantity() < request.quantity()) {
+        if (product.getQuantity() < quantity) {
             throw new ConflictException("Not enough stock for product '" + product.getName() + "': "
-                    + product.getQuantity() + " available, " + request.quantity() + " requested");
+                    + product.getQuantity() + " available, " + quantity + " requested");
         }
-        product.setQuantity(product.getQuantity() - request.quantity());
+        product.setQuantity(product.getQuantity() - quantity);
 
         SaleItem item = new SaleItem();
-        item.setQuantity(request.quantity());
-        item.setUnitPrice(request.unitPrice() != null ? request.unitPrice() : product.getPrice());
+        item.setQuantity(quantity);
+        item.setUnitPrice(unitPrice != null ? unitPrice : product.getPrice());
         item.setSale(sale);
         item.setProduct(product);
         sale.getItems().add(item);
         saleItemRepository.save(item);
-        stockMovements.record(product, MovementType.SALE, -request.quantity(), "Sale " + sale.getId(), item.getId());
-        return SaleItemResponse.from(item);
+        stockMovements.record(product, MovementType.SALE, -quantity, "Sale " + sale.getId(), item.getId());
+        return item;
     }
 
     @Transactional

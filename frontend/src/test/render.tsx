@@ -7,12 +7,13 @@ import { AuthProvider } from '../auth/AuthContext'
 import { routes } from '../router'
 import { theme } from '../theme'
 
-// Renders the real app (routes, auth, React Query) at a given URL, as in the browser
+// Renders the real app (routes, auth, React Query) at a given URL, as in the browser.
+// env="test" is Mantine's test mode: no animations or portals, so dropdowns and dialogs open at once.
 export function renderApp(url = '/') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const router = createMemoryRouter(routes, { initialEntries: [url] })
   const view = render(
-    <MantineProvider theme={theme}>
+    <MantineProvider theme={theme} env="test">
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <RouterProvider router={router} />
@@ -24,7 +25,7 @@ export function renderApp(url = '/') {
 }
 
 export function renderWithProviders(ui: ReactElement) {
-  return render(<MantineProvider theme={theme}>{ui}</MantineProvider>)
+  return render(<MantineProvider theme={theme} env="test">{ui}</MantineProvider>)
 }
 
 // Replaces fetch with a fake API: routes are "METHOD /path" -> [status, JSON body]
