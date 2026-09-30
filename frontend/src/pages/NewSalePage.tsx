@@ -34,6 +34,13 @@ export function NewSalePage() {
     queryFn: () => api<Page<Product>>('/api/products', { query: { search: debouncedProductSearch, size: 20, sort: 'name,asc' } }),
   })
 
+  // What an empty picker should say: loading, the API's error, or really nothing found
+  function pickerMessage(query: { isFetching: boolean; error: Error | null }, nothingFound: string) {
+    if (query.error) return `Could not load: ${messageOf(query.error)}`
+    if (query.isFetching) return 'Loading…'
+    return nothingFound
+  }
+
   const total = cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0)
 
   function addProduct(id: string | null) {
@@ -98,7 +105,7 @@ export function NewSalePage() {
             onChange={setCustomerId}
             searchValue={customerSearch}
             onSearchChange={setCustomerSearch}
-            nothingFoundMessage="No customer found (add them on the Customers page)"
+            nothingFoundMessage={pickerMessage(customers, 'No customer found: add them on the Customers page')}
             filter={({ options }) => options}
           />
           <Select
@@ -110,7 +117,7 @@ export function NewSalePage() {
             onChange={addProduct}
             searchValue={productSearch}
             onSearchChange={setProductSearch}
-            nothingFoundMessage="No product found"
+            nothingFoundMessage={pickerMessage(products, 'No product found')}
             filter={({ options }) => options}
           />
         </Stack>

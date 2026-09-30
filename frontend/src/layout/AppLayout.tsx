@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { AppShell, Badge, Burger, Button, Center, Group, Loader, NavLink, Text, Title } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { IconBox, IconCashRegister, IconGauge, IconHistory, IconLogout, IconReceipt, IconUserShield, IconUsers } from '@tabler/icons-react'
-import { NavLink as RouterLink, Outlet, useLocation } from 'react-router'
+import { Link, Outlet, useLocation } from 'react-router'
 import { useAuth } from '../auth/useAuth'
 
 const links = [
@@ -46,7 +46,7 @@ export function AppLayout() {
         {links.filter((link) => isAdmin || !link.adminOnly).map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
-            component={RouterLink}
+            component={Link}
             to={to}
             label={label}
             leftSection={<Icon size={18} />}

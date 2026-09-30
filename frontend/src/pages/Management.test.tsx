@@ -113,6 +113,28 @@ describe('new sale', () => {
     expect(screen.getByLabelText('Quantity of USB-C Cable')).toBeInTheDocument()
   })
 
+  it('says why the customer list is empty when the API fails', async () => {
+    loggedInAs('CASHIER')
+    mockApi({ ...shop, 'GET /api/customers': [500, { error: 'Internal server error' }] })
+    renderApp('/sales/new')
+
+    await userEvent.click(await screen.findByLabelText('Customer', { selector: 'input' }))
+
+    expect(await screen.findByText('Could not load: Internal server error')).toBeInTheDocument()
+  })
+
+  it('highlights only "New sale" in the menu on the new sale page', async () => {
+    loggedInAs('CASHIER')
+    mockApi(shop)
+    renderApp('/sales/new')
+
+    expect(await screen.findByRole('link', { name: 'New sale' })).toHaveAttribute('data-active')
+    const sales = screen.getByRole('link', { name: 'Sales' })
+    expect(sales).not.toHaveAttribute('data-active')
+    // React Router's NavLink would also mark /sales as current on /sales/new
+    expect(sales).not.toHaveAttribute('aria-current')
+  })
+
   it("can't be completed without a customer", async () => {
     loggedInAs('CASHIER')
     mockApi(shop)
