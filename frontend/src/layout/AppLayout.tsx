@@ -1,14 +1,18 @@
 import { Suspense } from 'react'
 import { AppShell, Badge, Burger, Button, Center, Group, Loader, NavLink, Text, Title } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
-import { IconBox, IconGauge, IconHistory, IconLogout } from '@tabler/icons-react'
+import { IconBox, IconCashRegister, IconGauge, IconHistory, IconLogout, IconReceipt, IconUserShield, IconUsers } from '@tabler/icons-react'
 import { NavLink as RouterLink, Outlet, useLocation } from 'react-router'
 import { useAuth } from '../auth/useAuth'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: IconGauge },
+  { to: '/sales/new', label: 'New sale', icon: IconCashRegister },
+  { to: '/sales', label: 'Sales', icon: IconReceipt },
   { to: '/products', label: 'Products', icon: IconBox },
+  { to: '/customers', label: 'Customers', icon: IconUsers },
   { to: '/stock-history', label: 'Stock history', icon: IconHistory },
+  { to: '/users', label: 'Users', icon: IconUserShield, adminOnly: true },
 ]
 
 export function AppLayout() {
@@ -39,14 +43,14 @@ export function AppLayout() {
       </AppShell.Header>
 
       <AppShell.Navbar p="sm">
-        {links.map(({ to, label, icon: Icon }) => (
+        {links.filter((link) => isAdmin || !link.adminOnly).map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             component={RouterLink}
             to={to}
             label={label}
             leftSection={<Icon size={18} />}
-            active={to === '/' ? pathname === '/' : pathname.startsWith(to)}
+            active={to === '/' || to === '/sales' ? pathname === to : pathname.startsWith(to)}
             onClick={close}
           />
         ))}

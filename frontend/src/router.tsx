@@ -11,6 +11,10 @@ import { LoginPage } from './pages/LoginPage'
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const ProductsPage = lazy(() => import('./pages/ProductsPage').then((m) => ({ default: m.ProductsPage })))
 const StockHistoryPage = lazy(() => import('./pages/StockHistoryPage').then((m) => ({ default: m.StockHistoryPage })))
+const NewSalePage = lazy(() => import('./pages/NewSalePage').then((m) => ({ default: m.NewSalePage })))
+const SalesPage = lazy(() => import('./pages/SalesPage').then((m) => ({ default: m.SalesPage })))
+const CustomersPage = lazy(() => import('./pages/CustomersPage').then((m) => ({ default: m.CustomersPage })))
+const UsersPage = lazy(() => import('./pages/UsersPage').then((m) => ({ default: m.UsersPage })))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
 
 export const routes = [
@@ -24,8 +28,12 @@ export const routes = [
     ),
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: 'sales/new', element: <NewSalePage /> },
+      { path: 'sales', element: <SalesPage /> },
       { path: 'products', element: <ProductsPage /> },
+      { path: 'customers', element: <CustomersPage /> },
       { path: 'stock-history', element: <StockHistoryPage /> },
+      { path: 'users', element: <RequireAuth adminOnly><UsersPage /></RequireAuth> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

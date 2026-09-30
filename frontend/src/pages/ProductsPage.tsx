@@ -1,19 +1,34 @@
 import { useState } from 'react'
-import { Badge, Group, Pagination, Stack, Table, Text, TextInput, Title } from '@mantine/core'
+import { ActionIcon, Badge, Button, Group, Menu, Pagination, Stack, Table, Text, TextInput, Title } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
-import { IconSearch } from '@tabler/icons-react'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { IconAdjustments, IconDots, IconEdit, IconPlus, IconSearch, IconTrash, IconTruckDelivery } from '@tabler/icons-react'
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { api } from '../api/client'
 import type { Page, Product } from '../api/types'
+import { useAuth } from '../auth/useAuth'
+import { ConfirmModal } from '../components/ConfirmModal'
+import { ProductFormModal, StockChangeModal } from '../components/ProductForms'
 import { QueryState } from '../components/QueryState'
 import { formatMoney } from '../utils/format'
+import { notifyError, notifySuccess } from '../utils/notify'
+import { useRefreshStock } from '../utils/refresh'
 
 const PAGE_SIZE = 20
 
+// Which dialog is open, and for which product
+type Dialog =
+  | { kind: 'create' }
+  | { kind: 'edit' | 'restock' | 'adjust' | 'delete'; product: Product }
+  | null
+
 export function ProductsPage() {
+  const { isAdmin } = useAuth()
   const [search, setSearch] = useState('')
   const [debouncedSearch] = useDebouncedValue(search, 300)
   const [page, setPage] = useState(1)
+  const [dialog, setDialog] = useState<Dialog>(null)
+  const refresh = useRefreshStock()
+  const close = () => setDialog(null)
 
   const products = useQuery({
     queryKey: ['products', { search: debouncedSearch, page }],
@@ -23,11 +38,30 @@ export function ProductsPage() {
     placeholderData: keepPreviousData,
   })
 
+  const remove = useMutation({
+    mutationFn: (product: Product) => api(`/api/products/${product.id}`, { method: 'DELETE' }),
+    onSuccess: (_, product) => {
+      notifySuccess(`${product.name} deleted`)
+      refresh()
+      close()
+    },
+    // e.g. 409 "cannot be deleted: it appears in 3 sale item(s)"
+    onError: (error) => {
+      notifyError(error)
+      close()
+    },
+  })
+
   return (
     <Stack>
       <Group justify="space-between">
         <Title order={2}>Products</Title>
-        {products.data && <Text c="dimmed" size="sm">{products.data.page.totalElements} products</Text>}
+        <Group>
+          {products.data && <Text c="dimmed" size="sm">{products.data.page.totalElements} products</Text>}
+          {isAdmin && (
+            <Button leftSection={<IconPlus size={16} />} onClick={() => setDialog({ kind: 'create' })}>New product</Button>
+          )}
+        </Group>
       </Group>
 
       <TextInput
@@ -52,6 +86,7 @@ export function ProductsPage() {
                   <Table.Th ta="right">In stock</Table.Th>
                   <Table.Th ta="right">Minimum</Table.Th>
                   <Table.Th />
+                  {isAdmin && <Table.Th />}
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -65,6 +100,22 @@ export function ProductsPage() {
                       {p.quantity === 0 ? <Badge color="red">Out of stock</Badge>
                         : p.lowStock ? <Badge color="orange">Low stock</Badge> : null}
                     </Table.Td>
+                    {isAdmin && (
+                      <Table.Td ta="right">
+                        <Menu position="bottom-end">
+                          <Menu.Target>
+                            <ActionIcon variant="subtle" aria-label={`Actions for ${p.name}`}><IconDots size={18} /></ActionIcon>
+                          </Menu.Target>
+                          <Menu.Dropdown>
+                            <Menu.Item leftSection={<IconTruckDelivery size={16} />} onClick={() => setDialog({ kind: 'restock', product: p })}>Restock</Menu.Item>
+                            <Menu.Item leftSection={<IconAdjustments size={16} />} onClick={() => setDialog({ kind: 'adjust', product: p })}>Stock correction</Menu.Item>
+                            <Menu.Item leftSection={<IconEdit size={16} />} onClick={() => setDialog({ kind: 'edit', product: p })}>Edit</Menu.Item>
+                            <Menu.Divider />
+                            <Menu.Item color="red" leftSection={<IconTrash size={16} />} onClick={() => setDialog({ kind: 'delete', product: p })}>Delete</Menu.Item>
+                          </Menu.Dropdown>
+                        </Menu>
+                      </Table.Td>
+                    )}
                   </Table.Tr>
                 ))}
               </Table.Tbody>
@@ -76,6 +127,21 @@ export function ProductsPage() {
           </>
         )}
       </QueryState>
+
+      {/* key: a fresh form for each product */}
+      {(dialog?.kind === 'create' || dialog?.kind === 'edit') && (
+        <ProductFormModal key={dialog.kind === 'edit' ? dialog.product.id : 'new'} opened onClose={close}
+          product={dialog.kind === 'edit' ? dialog.product : null} />
+      )}
+      {(dialog?.kind === 'restock' || dialog?.kind === 'adjust') && (
+        <StockChangeModal opened onClose={close} product={dialog.product} mode={dialog.kind} />
+      )}
+      {dialog?.kind === 'delete' && (
+        <ConfirmModal opened onClose={close} title="Delete product" confirmLabel="Delete"
+          loading={remove.isPending} onConfirm={() => remove.mutate(dialog.product)}>
+          Delete {dialog.product.name}? A product that was sold can't be deleted.
+        </ConfirmModal>
+      )}
     </Stack>
   )
 }

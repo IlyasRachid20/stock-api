@@ -25,7 +25,7 @@ error comes back with a clear message.
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **142 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
+- **148 backend tests and 25 frontend tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
 
 ## Tech stack
 
@@ -151,13 +151,10 @@ GET /api/products?search=galaxy&sort=price,desc&page=0&size=20
 
 ```http
 POST /api/sales
-{"customerId": 1}
-
-POST /api/sale-items
-{"saleId": 1, "productId": 1, "quantity": 3}
+{"customerId": 1, "items": [{"productId": 1, "quantity": 3}, {"productId": 6, "quantity": 2}]}
 ```
 
-`unitPrice` is optional and defaults to the product's current price.
+The sale and all its items are saved in **one transaction**: if any product is short of stock, nothing is saved and the API answers `409`. `unitPrice` is optional and defaults to the product's current price. Items can also be added one by one to an existing sale with `POST /api/sale-items` `{"saleId": 1, "productId": 1, "quantity": 3}`.
 
 The product's stock goes from 10 to 7, and the sale now shows its total:
 
@@ -270,8 +267,12 @@ The `frontend/` folder holds a React + TypeScript dashboard for the API:
 
 - **Login** with the API's JWT; the session ends when the token expires.
 - **Dashboard:** revenue, sales, items sold and average sale for 7, 30 or 90 days, a revenue-per-day chart, best sellers, CSV export (admins), and the low-stock list (everyone).
-- **Products:** search, pagination, low-stock and out-of-stock badges.
+- **New sale:** pick a customer, add products (with price and stock shown), adjust quantities, see the total, complete the sale in one request.
+- **Sales:** list with totals, details of each sale, cancelling a sale puts its items back in stock (admins).
+- **Products:** search, pagination, badges; admins create, edit, restock, correct stock and delete.
+- **Customers:** search, create and edit (everyone), delete (admins).
 - **Stock history:** every stock change with who made it and when, filterable by type.
+- **Users** (admins): create cashier or admin accounts, delete accounts.
 
 What the interface shows depends on the role: cashiers don't see (or load) the revenue reports.
 
@@ -325,7 +326,8 @@ src/main/resources/db/migration
 - [x] Stock movement history and low-stock alerts
 - [x] Sales reports and CSV export
 - [ ] Live demo (deployment files ready: `render.yaml`)
-- [ ] Web dashboard: login, dashboard, products and stock history done; forms, sales and users next
+- [x] Web dashboard (React)
+- [ ] Docker Compose with the dashboard
 
 ## Author
 

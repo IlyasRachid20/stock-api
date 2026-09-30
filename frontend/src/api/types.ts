@@ -32,6 +32,37 @@ export interface Summary {
   name: string
 }
 
+export interface Customer {
+  id: number
+  name: string
+  email: string | null
+  phone: string | null
+}
+
+export interface SaleItem {
+  id: number
+  saleId: number
+  product: Summary
+  quantity: number
+  unitPrice: number
+  lineTotal: number
+}
+
+export interface Sale {
+  id: number
+  customer: Summary
+  saleDate: string
+  items: SaleItem[]
+  total: number
+}
+
+export interface User {
+  id: number
+  username: string
+  role: Role
+  enabled: boolean
+}
+
 export type MovementType = 'INITIAL' | 'RESTOCK' | 'ADJUSTMENT' | 'SALE' | 'SALE_CANCELLED'
 
 export interface StockMovement {

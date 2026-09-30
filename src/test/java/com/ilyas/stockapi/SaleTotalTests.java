@@ -86,10 +86,12 @@ class SaleTotalTests {
 	}
 
 	@Test
-	void itemsAndTotalSentWhenCreatingSaleAreIgnored() throws Exception {
+	// The total is always computed from the items; a total sent by the client is ignored.
+	// (Items sent with a sale are accepted: see SaleWithItemsTests.)
+	void totalSentWhenCreatingSaleIsIgnored() throws Exception {
 		long customerId = idOf(postJson("/api/customers", "{\"name\":\"Sara\"}"));
 
-		postJson("/api/sales", "{\"customerId\":" + customerId + ",\"total\":999,\"items\":[{\"quantity\":5}]}")
+		postJson("/api/sales", "{\"customerId\":" + customerId + ",\"total\":999}")
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.items.length()").value(0))
 				.andExpect(jsonPath("$.total").value(0));
