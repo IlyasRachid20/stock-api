@@ -5,7 +5,7 @@
 ![Spring Boot 4.1](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
 
-A REST API for small shops to manage **customers, products, sales and stock**.
+A REST API and web dashboard for small shops to manage **customers, products, sales and stock**.
 Every sale updates the stock automatically, overselling is impossible, and every
 error comes back with a clear message.
 
@@ -40,6 +40,7 @@ error comes back with a clear message.
 | Packaging | Docker multi-stage image (non-root), Docker Compose |
 | Security | Spring Security 7, JWT (HS256) via the OAuth2 resource server, BCrypt |
 | Build | Maven (wrapper included) |
+| Web dashboard | React 19, TypeScript, Vite, Mantine (UI and charts), TanStack Query, React Router |
 
 ## Data model
 
@@ -263,6 +264,27 @@ Open http://localhost:8080/swagger-ui.html. The database is kept in a Docker vol
    ```
 4. Open http://localhost:8080/swagger-ui.html.
 
+## Web dashboard (React)
+
+The `frontend/` folder holds a React + TypeScript dashboard for the API:
+
+- **Login** with the API's JWT; the session ends when the token expires.
+- **Dashboard:** revenue, sales, items sold and average sale for 7, 30 or 90 days, a revenue-per-day chart, best sellers, CSV export (admins), and the low-stock list (everyone).
+- **Products:** search, pagination, low-stock and out-of-stock badges.
+- **Stock history:** every stock change with who made it and when, filterable by type.
+
+What the interface shows depends on the role: cashiers don't see (or load) the revenue reports.
+
+With the API running on port 8080:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:5173. Vite forwards `/api` to the API, so no CORS setup is needed. Checks: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
+
 ## Tests
 
 ```bash
@@ -303,7 +325,7 @@ src/main/resources/db/migration
 - [x] Stock movement history and low-stock alerts
 - [x] Sales reports and CSV export
 - [ ] Live demo (deployment files ready: `render.yaml`)
-- [ ] Web dashboard
+- [ ] Web dashboard: login, dashboard, products and stock history done; forms, sales and users next
 
 ## Author
 
