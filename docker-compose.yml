@@ -31,6 +31,7 @@ services:
       APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:-}
       # Demo mode: sample data and a "demo" cashier account (see application.properties)
       APP_DEMO_DATA: ${APP_DEMO_DATA:-false}
+      APP_TIME_ZONE: ${APP_TIME_ZONE:-UTC}
       APP_DEMO_PASSWORD: ${APP_DEMO_PASSWORD:-}
     ports:
       - "${APP_PORT:-8080}:8080"

@@ -68,7 +68,10 @@ public class SecurityConfig {
 
                         // What each role may do (the table is in RoleAccessTests). Rules are checked
                         // from top to bottom and the first one that matches decides.
-                        // Both roles can read everything
+                        // Revenue reports are for admins: this must come before the GET rule below,
+                        // which would otherwise let cashiers read them
+                        .requestMatchers("/api/reports/**").hasRole("ADMIN")
+                        // Both roles can read everything else
                         .requestMatchers(HttpMethod.GET, "/api/**").hasAnyRole("ADMIN", "CASHIER")
                         // A cashier registers customers and records sales at the till
                         .requestMatchers(HttpMethod.POST, "/api/customers", "/api/sales", "/api/sale-items")

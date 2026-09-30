@@ -14,6 +14,7 @@ error comes back with a clear message.
 - **Secure by default:** every endpoint needs a JWT from `POST /api/auth/login`; passwords are stored as BCrypt hashes; `ADMIN` and `CASHIER` roles.
 - **Full stock history:** every change (initial stock, restock, correction, sale, cancelled sale) is recorded with the quantity before and after, who made it and when. When stock doesn't add up, the history shows why.
 - **Low-stock alerts:** each product has a minimum level; `GET /api/products/low-stock` lists what needs reordering, emptiest first.
+- **Sales reports (admin):** totals, day-by-day sales with no gaps (ready for charts), best sellers and a CSV export, counted in the shop's own time zone.
 - **Stock always in sync:** selling an item takes it out of stock; deleting an item or a whole sale puts it back.
 - **No overselling, even under load:** the product row is locked while its stock changes (by a sale or a product update), so two requests at the same moment can't both take the last unit or overwrite each other's stock.
 - **Fast lists:** related rows are loaded in batches, so a page of sales takes at most 5 queries instead of one per sale, item and product (41 before). A test fails if this regresses.
@@ -24,7 +25,7 @@ error comes back with a clear message.
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **134 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
+- **142 automated tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
 
 ## Tech stack
 
@@ -78,6 +79,7 @@ erDiagram
 | Customers | `GET/POST /api/customers` · `GET/PUT/DELETE /api/customers/{id}` |
 | Products | `GET/POST /api/products` · `GET/PUT/DELETE /api/products/{id}` · `GET /api/products/low-stock` · `POST /api/products/{id}/restock` · `POST /api/products/{id}/adjustments` |
 | Stock history | `GET /api/stock-movements?productId=&type=` (newest first) |
+| Reports (`ADMIN` only) | `GET /api/reports/summary` · `GET /api/reports/sales-by-day` · `GET /api/reports/top-products` · `GET /api/reports/sales.csv` (all take `from`/`to`, default the last 30 days) |
 | Sales | `GET/POST /api/sales` · `GET/DELETE /api/sales/{id}` |
 | Sale items | `GET/POST /api/sale-items` · `GET/DELETE /api/sale-items/{id}` |
 | Auth | `POST /api/auth/login` (public) · `GET /api/auth/me` |
@@ -103,6 +105,7 @@ On first start, when there are no users, an `admin` account is created with the 
 |---|---|
 | `APP_JWT_SECRET` | Signs the tokens, at least 32 bytes. If unset, a random key is used and tokens stop working after a restart (development only). |
 | `APP_ADMIN_PASSWORD` | Password of the first `admin` account. |
+| `APP_TIME_ZONE` | Shop time zone for reports, e.g. `Africa/Casablanca` (default `UTC`). |
 
 ### Roles
 
@@ -114,6 +117,7 @@ On first start, when there are no users, an `admin` account is created with the 
 | Create, update or delete products (prices, stock) | yes | no |
 | Restock, adjust stock | yes | no |
 | Read stock history and low-stock list | yes | yes |
+| Sales reports and CSV export | yes | no |
 | Delete customers, sales or sale items | yes | no |
 | Manage user accounts | yes | no |
 
@@ -297,7 +301,7 @@ src/main/resources/db/migration
 - [x] JWT authentication with `ADMIN` / `CASHIER` roles
 - [x] Per-role access rules for products, customers and sales
 - [x] Stock movement history and low-stock alerts
-- [ ] Sales reports and CSV/PDF export
+- [x] Sales reports and CSV export
 - [ ] Live demo (deployment files ready: `render.yaml`)
 - [ ] Web dashboard
 
