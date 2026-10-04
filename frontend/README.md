@@ -15,6 +15,7 @@ Use another API address with `API_URL=http://localhost:8081 npm run dev`.
 | `npm run typecheck` | TypeScript |
 | `npm test` | Vitest + Testing Library (the app runs against a fake API) |
 | `npm run build` | production build in `dist/` |
+| `npm run e2e` | Playwright end-to-end tests against the running app (see `playwright.config.ts`) |
 
 ## Screenshots
 
