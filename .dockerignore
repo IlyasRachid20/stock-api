@@ -9,3 +9,6 @@ target/
 .factorypath
 *.iml
 .env
+frontend/node_modules/
+frontend/dist/
+docs/
