@@ -26,7 +26,7 @@ This project is a complete, production-style answer to that problem:
 - **A Java / Spring Boot API** that keeps stock correct under concurrent sales (row locking, one transaction per sale), records every stock change with who made it and when, and exposes clear reports.
 - **A React dashboard** that a cashier can use all day (new sale in a few clicks, live total, stock and customer search) and that gives the owner the numbers: revenue per day, best sellers, low stock, CSV export.
 - **Security built in:** JWT login, hashed passwords, and roles that decide what each person can see and do (cashiers never see revenue).
-- **Built to be maintained:** versioned database migrations, a clean API contract, consistent errors, Docker, and **177 automated tests** on every change (the backend ones on H2 and on a real PostgreSQL).
+- **Built to be maintained:** versioned database migrations, a clean API contract, consistent errors, Docker, and **188 automated tests** on every change (the backend ones on H2 and on a real PostgreSQL).
 
 Every feature was added through a reviewed pull request with its tests, and bugs found along the way (lost stock updates, N+1 queries, time-zone errors) are covered by tests so they can't come back.
 
@@ -46,7 +46,7 @@ Every feature was added through a reviewed pull request with its tests, and bugs
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **149 backend tests and 28 frontend tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
+- **160 backend tests and 28 frontend tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
 
 ## Tech stack
 
@@ -257,7 +257,9 @@ cp .env.example .env        # then set the passwords and APP_JWT_SECRET in .env
 docker compose up --build
 ```
 
-Open http://localhost:8080/swagger-ui.html. The database is kept in a Docker volume between restarts; `docker compose down --volumes` deletes it.
+Open **http://localhost:8080** for the dashboard, and http://localhost:8080/swagger-ui.html for the API documentation. The image builds the React dashboard and the API serves it from the same address, so there is nothing else to start. The database is kept in a Docker volume between restarts; `docker compose down --volumes` deletes it.
+
+To try it with sample data (a month of sales and a `demo` cashier account with the password `demo-cashier`), set `APP_DEMO_DATA=true` and `APP_DEMO_PASSWORD=demo-cashier` in `.env` before the first start.
 
 ### Option 2: Run with Java
 
@@ -297,7 +299,9 @@ The `frontend/` folder holds a React + TypeScript dashboard for the API:
 
 What the interface shows depends on the role: cashiers don't see (or load) the revenue reports.
 
-With the API running on port 8080:
+In production (Docker, Render) the API serves the built dashboard at `/`: any page that isn't the API or a file returns the dashboard, so links and refreshes on `/sales/new` work.
+
+For development, with the API running on port 8080:
 
 ```bash
 cd frontend
@@ -348,7 +352,7 @@ src/main/resources/db/migration
 - [x] Sales reports and CSV export
 - [ ] Live demo (deployment files ready: `render.yaml`)
 - [x] Web dashboard (React)
-- [ ] Docker Compose with the dashboard
+- [x] Docker Compose with the dashboard
 
 ## Author
 
