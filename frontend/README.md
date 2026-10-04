@@ -16,6 +16,16 @@ Use another API address with `API_URL=http://localhost:8081 npm run dev`.
 | `npm test` | Vitest + Testing Library (the app runs against a fake API) |
 | `npm run build` | production build in `dist/` |
 
+## Screenshots
+
+The images in [`docs/screenshots/`](../docs/screenshots/) are taken by a script, with the demo data (see the root README):
+
+```bash
+BASE_URL=http://localhost:5173 ADMIN_PASSWORD=... node scripts/screenshots.mjs
+```
+
+It drives the Edge or Chrome already installed on the machine through `playwright-core`, so no browser is downloaded.
+
 ## Structure
 
 ```

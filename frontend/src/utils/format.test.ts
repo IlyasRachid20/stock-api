@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysAgo, formatDay, formatMoney, signed } from './format'
+import { daysAgo, formatCompact, formatDay, formatMoney, signed } from './format'
 
 describe('format', () => {
   // Intl puts a non-breaking space (character 160, U+00A0) after the currency code
@@ -13,6 +13,12 @@ describe('format', () => {
 
   it('shows report days as they are, without shifting them to another time zone', () => {
     expect(formatDay('2026-09-10')).toBe('10 Sept')
+  })
+
+  it('shortens amounts for chart axes', () => {
+    expect(formatCompact(36000)).toBe('36K')
+    expect(formatCompact(1500)).toBe('1.5K')
+    expect(formatCompact(0)).toBe('0')
   })
 
   it('signs stock changes', () => {

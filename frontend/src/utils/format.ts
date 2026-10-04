@@ -9,6 +9,10 @@ const shortDay = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'shor
 export const formatMoney = (value: number) => money.format(value)
 export const formatInteger = (value: number) => integer.format(value)
 
+// Short amounts for chart axes, where the full format doesn't fit: 36000 -> "36K"
+const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 })
+export const formatCompact = (value: number) => compact.format(value)
+
 // API instants are UTC ("...Z"); shown in the browser's own time zone
 export const formatDateTime = (instant: string) => dateTime.format(new Date(instant))
 

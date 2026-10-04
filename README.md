@@ -4,10 +4,31 @@
 ![Java 21](https://img.shields.io/badge/Java-21-007396?logo=openjdk&logoColor=white)
 ![Spring Boot 4.1](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 
 A REST API and web dashboard for small shops to manage **customers, products, sales and stock**.
 Every sale updates the stock automatically, overselling is impossible, and every
 error comes back with a clear message.
+
+![Dashboard: revenue, sales per day, best sellers and low-stock alerts](docs/screenshots/dashboard.png)
+
+| New sale | Stock history |
+|---|---|
+| ![New sale: customer, products, live total](docs/screenshots/new-sale.png) | ![Stock history: every change with who and when](docs/screenshots/stock-history.png) |
+
+## What I built, and why
+
+A small shop needs to know three things at any moment: **what is in stock, what was sold, and why the numbers are what they are.** Spreadsheets get these wrong as soon as two people sell at the same time.
+
+This project is a complete, production-style answer to that problem:
+
+- **A Java / Spring Boot API** that keeps stock correct under concurrent sales (row locking, one transaction per sale), records every stock change with who made it and when, and exposes clear reports.
+- **A React dashboard** that a cashier can use all day (new sale in a few clicks, live total, stock and customer search) and that gives the owner the numbers: revenue per day, best sellers, low stock, CSV export.
+- **Security built in:** JWT login, hashed passwords, and roles that decide what each person can see and do (cashiers never see revenue).
+- **Built to be maintained:** versioned database migrations, a clean API contract, consistent errors, Docker, and **177 automated tests** on every change (the backend ones on H2 and on a real PostgreSQL).
+
+Every feature was added through a reviewed pull request with its tests, and bugs found along the way (lost stock updates, N+1 queries, time-zone errors) are covered by tests so they can't come back.
 
 ## Highlights
 
@@ -25,7 +46,7 @@ error comes back with a clear message.
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **148 backend tests and 25 frontend tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
+- **149 backend tests and 28 frontend tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
 
 ## Tech stack
 
