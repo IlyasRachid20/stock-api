@@ -26,7 +26,7 @@ This project is a complete, production-style answer to that problem:
 - **A Java / Spring Boot API** that keeps stock correct under concurrent sales (row locking, one transaction per sale), records every stock change with who made it and when, and exposes clear reports.
 - **A React dashboard** that a cashier can use all day (new sale in a few clicks, live total, stock and customer search) and that gives the owner the numbers: revenue per day, best sellers, low stock, CSV export.
 - **Security built in:** JWT login, hashed passwords, and roles that decide what each person can see and do (cashiers never see revenue).
-- **Built to be maintained:** versioned database migrations, a clean API contract, consistent errors, Docker, and **188 automated tests** on every change (the backend ones on H2 and on a real PostgreSQL).
+- **Built to be maintained:** versioned database migrations, a clean API contract, consistent errors, Docker, and **192 automated tests** on every change, from unit tests up to a real browser making a sale in the running app.
 
 Every feature was added through a reviewed pull request with its tests, and bugs found along the way (lost stock updates, N+1 queries, time-zone errors) are covered by tests so they can't come back.
 
@@ -46,7 +46,7 @@ Every feature was added through a reviewed pull request with its tests, and bugs
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **160 backend tests and 28 frontend tests** run on every pull request with GitHub Actions, on H2 **and on a real PostgreSQL**.
+- **160 backend tests, 28 frontend tests and 4 end-to-end tests** run on every pull request with GitHub Actions: the backend on H2 **and on a real PostgreSQL**, and the end-to-end tests in a **real Chrome** against the whole app running in Docker.
 
 ## Tech stack
 
@@ -310,6 +310,12 @@ npm run dev
 ```
 
 Open http://localhost:5173. Vite forwards `/api` to the API, so no CORS setup is needed. Checks: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
+
+**End-to-end tests** (`frontend/e2e`, Playwright) drive a real browser through the whole app started with Docker Compose in demo mode: a cashier makes a sale and the stock goes down, a cashier can't see revenue or user management, an admin restocks a product, pages survive a refresh and logout ends the session. They use the Chrome or Edge already installed:
+
+```bash
+BASE_URL=http://localhost:8080 E2E_BROWSER=msedge E2E_ADMIN_PASSWORD=... E2E_CASHIER_PASSWORD=... npm run e2e
+```
 
 ## Tests
 

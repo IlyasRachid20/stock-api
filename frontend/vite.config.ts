@@ -16,6 +16,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // e2e/ holds the Playwright tests, which need the whole app running (npm run e2e)
+    exclude: ['e2e/**', 'node_modules/**'],
     // Threads start reliably on Windows, where forked workers can time out while starting
     pool: 'threads',
     setupFiles: './src/test/setup.ts',
