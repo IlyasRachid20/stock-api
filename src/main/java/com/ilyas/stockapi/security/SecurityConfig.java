@@ -80,8 +80,9 @@ public class SecurityConfig {
                         // Everything else under /api is for admins: products, prices, stock and every
                         // delete. Deny by default: a new endpoint stays admin-only until a rule above opens it.
                         .requestMatchers("/api/**").hasRole("ADMIN")
-                        // Anything outside /api still needs a valid token
-                        .anyRequest().authenticated())
+                        // Outside /api there is no data: the dashboard's pages and files (it shows its own
+                        // login screen), plus the public paths above. Every API call still needs a token.
+                        .anyRequest().permitAll())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .bearerTokenResolver(ignoringPublicPaths())
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
