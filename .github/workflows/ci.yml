@@ -80,6 +80,7 @@ jobs:
           grep -qx "5 SQL" history.txt
           grep -qx "6 SQL" history.txt
           grep -qx "7 SQL" history.txt
+          grep -qx "8 SQL" history.txt
 
   # Builds the Docker image and starts the full stack with Docker Compose,
   # then sends real requests to check it works end to end.

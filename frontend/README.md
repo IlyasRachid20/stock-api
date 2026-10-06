@@ -27,6 +27,8 @@ BASE_URL=http://localhost:5173 ADMIN_PASSWORD=... node scripts/screenshots.mjs
 
 It drives the Edge or Chrome already installed on the machine through `playwright-core`, so no browser is downloaded.
 
+The demo shop's product pictures are drawn as SVG in [`scripts/demo-pictures.html`](scripts/demo-pictures.html) (no photos, no brand logos) and rendered to `src/main/resources/demo/pictures/` with `node scripts/demo-pictures.mjs`.
+
 ## Structure
 
 ```

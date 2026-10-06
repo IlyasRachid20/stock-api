@@ -7,6 +7,7 @@ import { Link } from 'react-router'
 import { api } from '../api/client'
 import type { Customer, Page, Product, Sale } from '../api/types'
 import { Price } from '../components/Price'
+import { ProductThumb } from '../components/ProductThumb'
 import { formatMoney } from '../utils/format'
 import { messageOf, notifySuccess } from '../utils/notify'
 import { useRefreshStock } from '../utils/refresh'
@@ -121,6 +122,15 @@ export function NewSalePage() {
             onSearchChange={setProductSearch}
             nothingFoundMessage={pickerMessage(products, 'No product found')}
             filter={({ options }) => options}
+            renderOption={({ option }) => {
+              const product = products.data?.content.find((p) => String(p.id) === option.value)
+              return (
+                <Group gap="sm" wrap="nowrap">
+                  {product && <ProductThumb product={product} size={32} />}
+                  <span>{option.label}</span>
+                </Group>
+              )
+            }}
           />
         </Stack>
       </Card>
@@ -142,7 +152,12 @@ export function NewSalePage() {
             <Table.Tbody>
               {cart.map((line) => (
                 <Table.Tr key={line.product.id}>
-                  <Table.Td>{line.product.name}</Table.Td>
+                  <Table.Td>
+                    <Group gap="sm" wrap="nowrap">
+                      <ProductThumb product={line.product} size={32} />
+                      {line.product.name}
+                    </Group>
+                  </Table.Td>
                   <Table.Td ta="right"><Price price={line.product.price} previousPrice={line.product.previousPrice} /></Table.Td>
                   <Table.Td>
                     <NumberInput

@@ -42,12 +42,14 @@ async function send(path: string, { method = 'GET', body, query }: RequestOption
   const headers: Record<string, string> = { Accept: 'application/json' }
   const token = getToken()
   if (token) headers.Authorization = `Bearer ${token}`
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  // A FormData body (file upload) is sent as multipart/form-data: the browser sets that header itself
+  const isForm = body instanceof FormData
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
 
   const response = await fetch(buildUrl(path, query), {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
   })
   if (!response.ok) {
     throw await toApiError(response, Boolean(token))

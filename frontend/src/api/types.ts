@@ -18,9 +18,17 @@ export interface Me {
   roles: Role[]
 }
 
+export interface ProductImage {
+  id: number
+  url: string
+  width: number
+  height: number
+}
+
 export interface Product {
   id: number
   name: string
+  description: string | null
   category: Summary | null
   price: number
   // The struck-through price during the 30 days after a price drop, otherwise null
@@ -28,6 +36,8 @@ export interface Product {
   quantity: number
   minQuantity: number
   lowStock: boolean
+  // Cover first
+  images: ProductImage[]
 }
 
 export interface Summary {

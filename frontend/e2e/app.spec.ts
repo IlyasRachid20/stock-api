@@ -28,6 +28,9 @@ async function stockOf(page: Page, product: string): Promise<number> {
   return Number(await row.getByRole('cell').nth(column).innerText())
 }
 
+// An 8 x 8 blue PNG
+const TINY_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGNQSLiAFTEMLQkApqhUAUiRg/kAAAAASUVORK5CYII='
+
 async function pick(page: Page, field: string, option: RegExp) {
   await page.getByRole('combobox', { name: field }).click()
   await page.getByRole('option', { name: option }).click()
@@ -114,6 +117,30 @@ test('recent price drops show the old price struck through', async ({ page }) =>
   await expect(phone).toContainText('-5%')
   const phoneCase = page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Phone Case', exact: true }) })
   await expect(phoneCase).toContainText('-13%')
+})
+
+test('demo products have pictures, and an admin adds one and deletes it', async ({ page }) => {
+  await logIn(page, admin)
+  await page.goto('/products')
+
+  // The cover picture comes from the API and really loads
+  const row = page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Redmi Note 15', exact: true }) })
+  const thumb = row.locator('img')
+  await expect(thumb).toHaveAttribute('src', /^\/api\/images\/\d+$/)
+  await expect.poll(() => thumb.evaluate((img) => Reflect.get(img, 'naturalWidth') as number)).toBeGreaterThan(0)
+
+  await page.getByRole('button', { name: 'Actions for Redmi Note 15' }).click()
+  await page.getByRole('menuitem', { name: 'Pictures' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByAltText(/^Picture \d+ of Redmi Note 15$/)).toHaveCount(1)
+
+  // A small PNG, shrunk and converted by the browser, then saved by the API
+  await dialog.locator('input[type="file"]').setInputFiles({ name: 'back.png', mimeType: 'image/png', buffer: Buffer.from(TINY_PNG, 'base64') })
+  await expect(dialog.getByAltText(/^Picture \d+ of Redmi Note 15$/)).toHaveCount(2)
+
+  // Deleted again, so the test can run again on the same data
+  await dialog.getByRole('button', { name: 'Delete picture 2' }).click()
+  await expect(dialog.getByAltText(/^Picture \d+ of Redmi Note 15$/)).toHaveCount(1)
 })
 
 test('pages survive a browser refresh, and logging out ends the session', async ({ page }) => {

@@ -2,6 +2,7 @@ package com.ilyas.stockapi;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -119,6 +120,15 @@ class RoleAccessTests {
 	@Test
 	void cashierCannotDeleteProducts() throws Exception {
 		mockMvc.perform(delete("/api/products/" + productId)).andExpect(status().isForbidden());
+	}
+
+	@Test
+	void cashierCannotChangeProductPictures() throws Exception {
+		mockMvc.perform(multipart("/api/products/" + productId + "/images")
+						.file(new org.springframework.mock.web.MockMultipartFile("file", new byte[] {1, 2, 3})))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(put("/api/products/" + productId + "/images/999999/cover")).andExpect(status().isForbidden());
+		mockMvc.perform(delete("/api/products/" + productId + "/images/999999")).andExpect(status().isForbidden());
 	}
 
 	@Test

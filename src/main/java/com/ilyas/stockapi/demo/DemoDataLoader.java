@@ -19,6 +19,7 @@ import com.ilyas.stockapi.repository.SaleRepository;
 import com.ilyas.stockapi.repository.StockMovementRepository;
 import com.ilyas.stockapi.service.CategoryService;
 import com.ilyas.stockapi.service.CustomerService;
+import com.ilyas.stockapi.service.ProductPictureService;
 import com.ilyas.stockapi.service.ProductService;
 import com.ilyas.stockapi.service.SaleService;
 import com.ilyas.stockapi.service.UserService;
@@ -29,8 +30,12 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -39,6 +44,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
 
@@ -65,6 +71,7 @@ public class DemoDataLoader implements ApplicationRunner {
     private final PriceChangeRepository priceChangeRepository;
     private final CategoryService categoryService;
     private final ProductService productService;
+    private final ProductPictureService pictureService;
     private final CustomerService customerService;
     private final SaleService saleService;
     private final UserService userService;
@@ -73,8 +80,8 @@ public class DemoDataLoader implements ApplicationRunner {
     public DemoDataLoader(ProductRepository productRepository, AppUserRepository userRepository,
             SaleRepository saleRepository, StockMovementRepository movementRepository,
             CategoryRepository categoryRepository, PriceChangeRepository priceChangeRepository,
-            CategoryService categoryService,
-            ProductService productService, CustomerService customerService, SaleService saleService,
+            CategoryService categoryService, ProductService productService, ProductPictureService pictureService,
+            CustomerService customerService, SaleService saleService,
             UserService userService, @Value("${app.demo.password:}") String demoPassword) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
@@ -84,6 +91,7 @@ public class DemoDataLoader implements ApplicationRunner {
         this.priceChangeRepository = priceChangeRepository;
         this.categoryService = categoryService;
         this.productService = productService;
+        this.pictureService = pictureService;
         this.customerService = customerService;
         this.saleService = saleService;
         this.userService = userService;
@@ -108,17 +116,26 @@ public class DemoDataLoader implements ApplicationRunner {
         long chargers = category("Chargers & cables");
         long protection = category("Protection");
 
-        // name, price, initial stock, minimum level, category: phones first, then accessories.
+        // name, price, initial stock, minimum level, category, description: phones first, then accessories.
         // Some prices change during the month (see below), so the shop shows price reductions.
+        // Each product gets its picture from demo/pictures (drawn for the demo, see frontend/scripts).
         List<Long> products = List.of(
-                product("Galaxy S26", "9999.00", 30, 5, phones),
-                product("iPhone 17", "12900.00", 16, 5, phones),
-                product("Redmi Note 15", "2899.00", 45, 8, phones),
-                product("AirPods Pro 3", "2590.00", 18, 6, audio),
-                product("USB-C Charger 45W", "199.00", 90, 15, chargers),
-                product("USB-C Cable 1m", "49.90", 60, 20, chargers),
-                product("Screen Protector", "79.00", 55, 15, protection),
-                product("Phone Case", "149.00", 35, 10, protection));
+                product("Galaxy S26", "9999.00", 30, 5, phones,
+                        "6.2-inch AMOLED screen, 256 GB of storage and a triple camera. Two-year warranty."),
+                product("iPhone 17", "12900.00", 16, 5, phones,
+                        "6.1-inch screen, 128 GB of storage and a battery that lasts all day. Two-year warranty."),
+                product("Redmi Note 15", "2899.00", 45, 8, phones,
+                        "Large 6.7-inch screen, 128 GB of storage and fast charging, at a friendly price."),
+                product("AirPods Pro 3", "2590.00", 18, 6, audio,
+                        "Wireless earbuds with noise cancellation and a USB-C charging case."),
+                product("USB-C Charger 45W", "199.00", 90, 15, chargers,
+                        "Fast wall charger for phones and tablets, with one USB-C port."),
+                product("USB-C Cable 1m", "49.90", 60, 20, chargers,
+                        "Braided USB-C to USB-C cable, one metre long, for charging and data."),
+                product("Screen Protector", "79.00", 55, 15, protection,
+                        "Tempered glass that protects the screen from scratches and small drops."),
+                product("Phone Case", "149.00", 35, 10, protection,
+                        "Slim shock-absorbing case with raised edges around the camera."));
         // The initial stock arrived the day before the first sale
         movementRepository.findAll().forEach(m -> {
             m.setCreatedAt(firstDay.minus(Duration.ofHours(14)));
@@ -179,9 +196,20 @@ public class DemoDataLoader implements ApplicationRunner {
                 .orElseGet(() -> categoryService.create(new CategoryRequest(name)).id());
     }
 
-    private long product(String name, String price, int quantity, int minQuantity, long categoryId) {
-        return productService.create(
-                new ProductRequest(name, new BigDecimal(price), quantity, minQuantity, categoryId)).id();
+    private long product(String name, String price, int quantity, int minQuantity, long categoryId, String description) {
+        long id = productService.create(
+                new ProductRequest(name, new BigDecimal(price), quantity, minQuantity, categoryId, description)).id();
+        // "USB-C Cable 1m" -> demo/pictures/usb-c-cable-1m.jpg
+        ClassPathResource picture = new ClassPathResource(
+                "demo/pictures/" + name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-") + ".jpg");
+        if (picture.exists()) {
+            try (InputStream content = picture.getInputStream()) {
+                pictureService.add(id, content, picture.contentLength());
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+        return id;
     }
 
     private long customer(String name, String email, String phone) {
@@ -224,7 +252,8 @@ public class DemoDataLoader implements ApplicationRunner {
     // Changes a price through the normal service (price history, struck-through price), then
     // moves the change back to that day of the demo month
     private void changePrice(long productId, String name, String price, long categoryId, Instant when) {
-        productService.update(productId, new ProductRequest(name, new BigDecimal(price), null, null, categoryId));
+        String description = productRepository.findById(productId).orElseThrow().getDescription();
+        productService.update(productId, new ProductRequest(name, new BigDecimal(price), null, null, categoryId, description));
         priceChangeRepository.findByProductIdOrderByChangedAtDescIdDesc(productId).stream().findFirst().ifPresent(change -> {
             change.setChangedAt(when);
             priceChangeRepository.save(change);

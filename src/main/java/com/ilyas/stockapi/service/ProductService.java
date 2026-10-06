@@ -31,15 +31,17 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
     private final StockMovementService stockMovements;
     private final PriceHistoryService priceHistory;
+    private final ProductPictureService pictures;
 
     public ProductService(ProductRepository productRepository, SaleItemRepository saleItemRepository,
                           CategoryRepository categoryRepository, StockMovementService stockMovements,
-                          PriceHistoryService priceHistory) {
+                          PriceHistoryService priceHistory, ProductPictureService pictures) {
         this.productRepository = productRepository;
         this.saleItemRepository = saleItemRepository;
         this.categoryRepository = categoryRepository;
         this.stockMovements = stockMovements;
         this.priceHistory = priceHistory;
+        this.pictures = pictures;
     }
 
     // search (part of the name) and categoryId are both optional
@@ -61,6 +63,7 @@ public class ProductService {
     public ProductResponse create(ProductRequest request) {
         Product product = new Product();
         product.setName(request.name());
+        product.setDescription(request.description());
         product.setPrice(request.price());
         product.setQuantity(request.quantity() != null ? request.quantity() : 0);
         product.setMinQuantity(request.minQuantity() != null ? request.minQuantity() : 0);
@@ -80,6 +83,7 @@ public class ProductService {
         Product product = productRepository.findByIdForUpdate(id).orElseThrow(NotFoundException::new);
         BigDecimal oldPrice = product.getPrice();
         product.setName(request.name());
+        product.setDescription(request.description());
         product.setPrice(request.price());
         product.setCategory(categoryOf(request.categoryId()));
         if (oldPrice.compareTo(request.price()) != 0) {
@@ -138,6 +142,7 @@ public class ProductService {
         // Never sold, so its history only holds its own restocks, corrections and price changes
         stockMovements.deleteHistoryOf(id);
         priceHistory.deleteHistoryOf(id);
+        pictures.deleteAllOf(id);
         productRepository.delete(product);
     }
 

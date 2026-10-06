@@ -119,6 +119,12 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
         if (ex instanceof HttpMessageNotReadableException) {
             return "Malformed JSON request body";
         }
+        if (ex instanceof org.springframework.web.multipart.MaxUploadSizeExceededException) {
+            return "The file is too large: 10 MB at most";
+        }
+        if (ex instanceof org.springframework.web.multipart.support.MissingServletRequestPartException missing) {
+            return "Send the file as the '" + missing.getRequestPartName() + "' part of a multipart/form-data request";
+        }
         if (ex instanceof MethodArgumentTypeMismatchException mismatch) {
             return "Invalid value '" + mismatch.getValue() + "' for parameter '" + mismatch.getName() + "'";
         }
