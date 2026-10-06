@@ -18,6 +18,7 @@ const ahmed = { id: 7, name: 'Ahmed', email: 'ahmed@test.com', phone: null }
 const phones = { id: 3, name: 'Phones', productCount: 1 }
 const audio = { id: 4, name: 'Audio', productCount: 0 }
 const phoneInCategory = { ...phone, category: { id: 3, name: 'Phones' } }
+const reducedPhone = { ...phone, previousPrice: 9999 }
 
 describe('products', () => {
   it('lets an admin create a product, showing the API validation errors under the fields', async () => {
@@ -94,6 +95,41 @@ describe('products', () => {
 
     await waitFor(() => expect(calls.find((c) => c.url === '/api/products/1/restock')?.body)
       .toEqual({ quantity: 10, reason: 'Delivery #42' }))
+  })
+
+  it('shows a recent price drop with the old price struck through and the reduction', async () => {
+    loggedInAs('CASHIER')
+    mockApi({ 'GET /api/products': [200, page([reducedPhone, cable])], 'GET /api/categories': [200, []] })
+    renderApp('/products')
+
+    const row = (await screen.findByText('Galaxy S26')).closest('tr')!
+    expect(within(row).getByText('-5%')).toBeInTheDocument()
+    // The old price is struck through, and screen readers hear "Was" before it
+    expect(within(row).getByText(/^MAD.9,999\.00$/)).toHaveStyle({ textDecoration: 'line-through' })
+    expect(within(row).getByText('Was')).toBeInTheDocument()
+    // No reduction, no struck price
+    const cableRow = screen.getByText('USB-C Cable').closest('tr')!
+    expect(within(cableRow).queryByText(/Was/)).not.toBeInTheDocument()
+  })
+
+  it('shows the price history of a product to an admin', async () => {
+    loggedInAs('ADMIN')
+    mockApi({
+      'GET /api/products': [200, page([reducedPhone])],
+      'GET /api/categories': [200, []],
+      'GET /api/products/1/price-history': [200, [
+        { id: 4, oldPrice: 9999, newPrice: 9500, changedBy: 'admin', changedAt: '2026-09-20T08:00:00Z' },
+      ]],
+    })
+    renderApp('/products')
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Actions for Galaxy S26' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Price history' }))
+    const dialog = await screen.findByRole('dialog')
+
+    expect(await within(dialog).findByText('MAD 9,500.00')).toBeInTheDocument()
+    expect(within(dialog).getByText('MAD 9,999.00')).toBeInTheDocument()
+    expect(within(dialog).getByText('admin')).toBeInTheDocument()
   })
 
   it('shows no management actions to a cashier', async () => {
@@ -175,6 +211,16 @@ describe('new sale', () => {
     expect(sales).not.toHaveAttribute('data-active')
     // React Router's NavLink would also mark /sales as current on /sales/new
     expect(sales).not.toHaveAttribute('aria-current')
+  })
+
+  it('tells the cashier when a product price was just reduced', async () => {
+    loggedInAs('CASHIER')
+    mockApi({ ...shop, 'GET /api/products': [200, page([reducedPhone])] })
+    renderApp('/sales/new')
+
+    await userEvent.click(await screen.findByLabelText('Add a product', { selector: 'input' }))
+
+    expect(await screen.findByRole('option', { name: /Galaxy S26 · MAD.9,500\.00 \(was MAD.9,999\.00\)/ })).toBeInTheDocument()
   })
 
   it("can't be completed without a customer", async () => {

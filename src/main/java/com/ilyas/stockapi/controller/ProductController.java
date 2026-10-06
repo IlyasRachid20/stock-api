@@ -1,6 +1,7 @@
 package com.ilyas.stockapi.controller;
 
 import com.ilyas.stockapi.dto.AdjustmentRequest;
+import com.ilyas.stockapi.dto.PriceChangeResponse;
 import com.ilyas.stockapi.dto.ProductRequest;
 import com.ilyas.stockapi.dto.ProductResponse;
 import com.ilyas.stockapi.dto.RestockRequest;
@@ -12,6 +13,8 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/products")
@@ -41,6 +44,12 @@ public class ProductController {
     @GetMapping("/{id}")
     public ProductResponse getById(@PathVariable Long id) {
         return productService.get(id);
+    }
+
+    // Every price change, newest first, with who made it and when
+    @GetMapping("/{id}/price-history")
+    public List<PriceChangeResponse> priceHistory(@PathVariable Long id) {
+        return productService.priceHistory(id);
     }
 
     @PostMapping

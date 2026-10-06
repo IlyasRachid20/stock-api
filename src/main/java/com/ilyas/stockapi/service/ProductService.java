@@ -1,6 +1,7 @@
 package com.ilyas.stockapi.service;
 
 import com.ilyas.stockapi.dto.AdjustmentRequest;
+import com.ilyas.stockapi.dto.PriceChangeResponse;
 import com.ilyas.stockapi.dto.ProductRequest;
 import com.ilyas.stockapi.dto.ProductResponse;
 import com.ilyas.stockapi.dto.RestockRequest;
@@ -18,6 +19,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 @Service
 @Transactional(readOnly = true)
 public class ProductService {
@@ -26,13 +30,16 @@ public class ProductService {
     private final SaleItemRepository saleItemRepository;
     private final CategoryRepository categoryRepository;
     private final StockMovementService stockMovements;
+    private final PriceHistoryService priceHistory;
 
     public ProductService(ProductRepository productRepository, SaleItemRepository saleItemRepository,
-                          CategoryRepository categoryRepository, StockMovementService stockMovements) {
+                          CategoryRepository categoryRepository, StockMovementService stockMovements,
+                          PriceHistoryService priceHistory) {
         this.productRepository = productRepository;
         this.saleItemRepository = saleItemRepository;
         this.categoryRepository = categoryRepository;
         this.stockMovements = stockMovements;
+        this.priceHistory = priceHistory;
     }
 
     // search (part of the name) and categoryId are both optional
@@ -71,9 +78,13 @@ public class ProductService {
         // Locked like a sale does, so a sale running at the same moment can't have its
         // stock change overwritten by this update (Hibernate writes every column back)
         Product product = productRepository.findByIdForUpdate(id).orElseThrow(NotFoundException::new);
+        BigDecimal oldPrice = product.getPrice();
         product.setName(request.name());
         product.setPrice(request.price());
         product.setCategory(categoryOf(request.categoryId()));
+        if (oldPrice.compareTo(request.price()) != 0) {
+            priceHistory.record(product, oldPrice, request.price());
+        }
         if (request.minQuantity() != null) {
             product.setMinQuantity(request.minQuantity());
         }
@@ -83,6 +94,14 @@ public class ProductService {
             stockMovements.record(product, MovementType.ADJUSTMENT, change, "Quantity set by product update", null);
         }
         return ProductResponse.from(product);
+    }
+
+    // Every price change of the product, newest first
+    public List<PriceChangeResponse> priceHistory(Long id) {
+        if (!productRepository.existsById(id)) {
+            throw new NotFoundException();
+        }
+        return priceHistory.historyOf(id);
     }
 
     // Goods received
@@ -116,8 +135,9 @@ public class ProductService {
             throw new ConflictException("Product '" + product.getName()
                     + "' cannot be deleted: it appears in " + sold + " sale item(s)");
         }
-        // Never sold, so its history only holds its own restocks and corrections
+        // Never sold, so its history only holds its own restocks, corrections and price changes
         stockMovements.deleteHistoryOf(id);
+        priceHistory.deleteHistoryOf(id);
         productRepository.delete(product);
     }
 

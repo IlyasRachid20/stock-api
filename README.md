@@ -26,7 +26,7 @@ This project is a complete, production-style answer to that problem:
 - **A Java / Spring Boot API** that keeps stock correct under concurrent sales (row locking, one transaction per sale), records every stock change with who made it and when, and exposes clear reports.
 - **A React dashboard** that a cashier can use all day (new sale in a few clicks, live total, stock and customer search) and that gives the owner the numbers: revenue per day, best sellers, low stock, CSV export.
 - **Security built in:** JWT login, hashed passwords, and roles that decide what each person can see and do (cashiers never see revenue).
-- **Built to be maintained:** versioned database migrations, a clean API contract, consistent errors, Docker, and **213 automated tests** on every change, from unit tests up to a real browser making a sale in the running app.
+- **Built to be maintained:** versioned database migrations, a clean API contract, consistent errors, Docker, and **226 automated tests** on every change, from unit tests up to a real browser making a sale in the running app.
 
 Every feature was added through a reviewed pull request with its tests, and bugs found along the way (lost stock updates, N+1 queries, time-zone errors) are covered by tests so they can't come back.
 
@@ -36,6 +36,7 @@ Every feature was added through a reviewed pull request with its tests, and bugs
 - **Full stock history:** every change (initial stock, restock, correction, sale, cancelled sale) is recorded with the quantity before and after, who made it and when. When stock doesn't add up, the history shows why.
 - **Low-stock alerts:** each product has a minimum level; `GET /api/products/low-stock` lists what needs reordering, emptiest first.
 - **Categories:** products are filed in categories (Phones, Audio…), the product list filters by category, and the reports show the revenue of each category. A category can only be deleted once it's empty.
+- **Price history and honest reductions:** every price change is recorded with who made it and when. After a price drop, the old price is shown struck through for 30 days, and it's the lowest price of the 30 days before the drop (the European rule), so raising a price just before a "promotion" can't fake a reduction.
 - **Sales reports (admin):** totals, day-by-day sales with no gaps (ready for charts), best sellers, revenue by category and a CSV export, counted in the shop's own time zone.
 - **Stock always in sync:** selling an item takes it out of stock; deleting an item or a whole sale puts it back.
 - **No overselling, even under load:** the product row is locked while its stock changes (by a sale or a product update), so two requests at the same moment can't both take the last unit or overwrite each other's stock.
@@ -47,7 +48,7 @@ Every feature was added through a reviewed pull request with its tests, and bugs
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **174 backend tests, 34 frontend tests and 5 end-to-end tests** run on every pull request with GitHub Actions: the backend on H2 **and on a real PostgreSQL**, and the end-to-end tests in a **real Chrome** against the whole app running in Docker.
+- **182 backend tests, 38 frontend tests and 6 end-to-end tests** run on every pull request with GitHub Actions: the backend on H2 **and on a real PostgreSQL**, and the end-to-end tests in a **real Chrome** against the whole app running in Docker.
 
 ## Tech stack
 
@@ -72,6 +73,7 @@ erDiagram
     SALE ||--o{ SALE_ITEM : contains
     PRODUCT ||--o{ SALE_ITEM : "sold as"
     CATEGORY |o--o{ PRODUCT : groups
+    PRODUCT ||--o{ PRICE_CHANGE : "price history"
 
     CUSTOMER {
         long id
@@ -89,6 +91,14 @@ erDiagram
         decimal price
         int quantity "current stock"
         int minQuantity "low-stock level"
+        decimal previousPrice "struck-through price after a drop"
+    }
+    PRICE_CHANGE {
+        long id
+        decimal oldPrice
+        decimal newPrice
+        string changedBy
+        datetime changedAt
     }
     SALE {
         long id
@@ -106,7 +116,7 @@ erDiagram
 | Resource | Endpoints |
 |---|---|
 | Customers | `GET/POST /api/customers` · `GET/PUT/DELETE /api/customers/{id}` |
-| Products | `GET/POST /api/products` · `GET/PUT/DELETE /api/products/{id}` · `GET /api/products/low-stock` · `POST /api/products/{id}/restock` · `POST /api/products/{id}/adjustments` |
+| Products | `GET/POST /api/products` · `GET/PUT/DELETE /api/products/{id}` · `GET /api/products/low-stock` · `POST /api/products/{id}/restock` · `POST /api/products/{id}/adjustments` · `GET /api/products/{id}/price-history` |
 | Categories | `GET/POST /api/categories` (with the number of products in each) · `PUT/DELETE /api/categories/{id}` |
 | Stock history | `GET /api/stock-movements?productId=&type=` (newest first) |
 | Reports (`ADMIN` only) | `GET /api/reports/summary` · `GET /api/reports/sales-by-day` · `GET /api/reports/top-products` · `GET /api/reports/sales-by-category` · `GET /api/reports/sales.csv` (all take `from`/`to`, default the last 30 days) |
@@ -302,7 +312,7 @@ The `frontend/` folder holds a React + TypeScript dashboard for the API:
 - **Dashboard:** revenue, sales, items sold and average sale for 7, 30 or 90 days, a revenue-per-day chart, best sellers, revenue by category, CSV export (admins), and the low-stock list (everyone).
 - **New sale:** pick a customer, add products (with price and stock shown), adjust quantities, see the total, complete the sale in one request.
 - **Sales:** list with totals, details of each sale, cancelling a sale puts its items back in stock (admins).
-- **Products:** search, filter by category (kept in the address, so it can be bookmarked), pagination, badges; admins create, edit, restock, correct stock and delete.
+- **Products:** search, filter by category (kept in the address, so it can be bookmarked), pagination, badges, recent price drops struck through with the reduction (also in the new sale screen), price history; admins create, edit, restock, correct stock and delete.
 - **Categories** (admins): add, rename and delete categories; each one links to its products.
 - **Customers:** search, create and edit (everyone), delete (admins).
 - **Stock history:** every stock change with who made it and when, filterable by type.
@@ -322,7 +332,7 @@ npm run dev
 
 Open http://localhost:5173. Vite forwards `/api` to the API, so no CORS setup is needed. Checks: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
 
-**End-to-end tests** (`frontend/e2e`, Playwright) drive a real browser through the whole app started with Docker Compose in demo mode: a cashier makes a sale and the stock goes down, a cashier can't see revenue or user management, an admin restocks a product, the demo products are filed in categories, pages survive a refresh and logout ends the session. They use the Chrome or Edge already installed:
+**End-to-end tests** (`frontend/e2e`, Playwright) drive a real browser through the whole app started with Docker Compose in demo mode: a cashier makes a sale and the stock goes down, a cashier can't see revenue or user management, an admin restocks a product, the demo products are filed in categories, recent price drops are struck through, pages survive a refresh and logout ends the session. They use the Chrome or Edge already installed:
 
 ```bash
 BASE_URL=http://localhost:8080 E2E_BROWSER=msedge E2E_ADMIN_PASSWORD=... E2E_CASHIER_PASSWORD=... npm run e2e
@@ -371,7 +381,7 @@ src/main/resources/db/migration
 - [x] Web dashboard (React)
 - [x] Docker Compose with the dashboard
 - [x] Product categories
-- [ ] Price history and struck-through old prices
+- [x] Price history and struck-through old prices
 - [ ] Product pictures
 
 ## Author

@@ -37,7 +37,7 @@ class ResponseShapeTests {
 		long itemId = idOf(postJson("/api/sale-items", "{\"saleId\":" + saleId + ",\"productId\":" + productId + ",\"quantity\":2}"));
 
 		expectFields("/api/customers/" + customerId, "$", "id", "name", "email", "phone");
-		expectFields("/api/products/" + productId, "$", "id", "name", "category", "price", "quantity", "minQuantity", "lowStock");
+		expectFields("/api/products/" + productId, "$", "id", "name", "category", "price", "previousPrice", "quantity", "minQuantity", "lowStock");
 		expectFields("/api/sale-items/" + itemId, "$", "id", "saleId", "product", "quantity", "unitPrice", "lineTotal");
 		expectFields("/api/sales/" + saleId, "$", "id", "customer", "saleDate", "items", "total");
 		expectFields("/api/sales/" + saleId, "$.customer", "id", "name");

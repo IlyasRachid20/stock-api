@@ -104,6 +104,18 @@ test('the products of the demo shop are filed in categories', async ({ page }) =
   await expect(page.getByRole('cell', { name: 'Galaxy S26', exact: true })).toHaveCount(0)
 })
 
+test('recent price drops show the old price struck through', async ({ page }) => {
+  await logIn(page, cashier)
+  await page.goto('/products')
+
+  // In the demo month the phone went from 9,999 to 9,500 and the case from 149 to 129
+  const phone = page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Galaxy S26', exact: true }) })
+  await expect(phone).toContainText('9,999.00')
+  await expect(phone).toContainText('-5%')
+  const phoneCase = page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Phone Case', exact: true }) })
+  await expect(phoneCase).toContainText('-13%')
+})
+
 test('pages survive a browser refresh, and logging out ends the session', async ({ page }) => {
   await logIn(page, cashier)
 

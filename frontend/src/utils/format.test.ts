@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysAgo, formatCompact, formatDay, formatMoney, signed } from './format'
+import { daysAgo, formatCompact, formatDay, formatMoney, reductionPercent, signed } from './format'
 
 describe('format', () => {
   // Intl puts a non-breaking space (character 160, U+00A0) after the currency code
@@ -19,6 +19,11 @@ describe('format', () => {
     expect(formatCompact(36000)).toBe('36K')
     expect(formatCompact(1500)).toBe('1.5K')
     expect(formatCompact(0)).toBe('0')
+  })
+
+  it('rounds price reductions to whole percents', () => {
+    expect(reductionPercent(9500, 9999)).toBe(5)
+    expect(reductionPercent(129, 149)).toBe(13)
   })
 
   it('signs stock changes', () => {

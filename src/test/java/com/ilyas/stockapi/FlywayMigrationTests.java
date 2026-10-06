@@ -33,7 +33,7 @@ class FlywayMigrationTests {
 		MigrationInfo[] applied = flyway.info().applied();
 
 		assertThat(Arrays.stream(applied).map(info -> info.getVersion().getVersion()))
-				.containsExactly("1", "2", "3", "4", "5", "6");
+				.containsExactly("1", "2", "3", "4", "5", "6", "7");
 		assertThat(flyway.info().pending()).isEmpty();
 	}
 
@@ -42,6 +42,7 @@ class FlywayMigrationTests {
 		assertThat(indexNames("sales")).contains("idx_sales_customer_id");
 		assertThat(indexNames("sale_items")).contains("idx_sale_items_sale_id", "idx_sale_items_product_id");
 		assertThat(indexNames("products")).contains("idx_products_category_id");
+		assertThat(indexNames("price_changes")).contains("idx_price_changes_product_id");
 	}
 
 	// Standard JDBC metadata, so this works on both H2 (upper-case names) and PostgreSQL (lower-case)
