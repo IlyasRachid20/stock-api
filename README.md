@@ -1,4 +1,4 @@
-# Stock API
+# TechSouk: online shop and back-office
 
 [![CI](https://github.com/IlyasRachid20/stock-api/actions/workflows/ci.yml/badge.svg)](https://github.com/IlyasRachid20/stock-api/actions/workflows/ci.yml)
 ![Java 21](https://img.shields.io/badge/Java-21-007396?logo=openjdk&logoColor=white)
@@ -7,15 +7,17 @@
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 
-A REST API and web dashboard for small shops to manage **customers, products, sales and stock**.
-Every sale updates the stock automatically, overselling is impossible, and every
-error comes back with a clear message.
+A complete shop for **phones and accessories**: customers browse it on the **website**, staff sell at the **counter** and manage **products, stock and reports** in the **back-office**. Everything runs on one stock that can't be oversold, through a Java / Spring Boot API that answers every error with a clear message.
 
-![Dashboard: revenue, sales per day, best sellers and low-stock alerts](docs/screenshots/dashboard.png)
+The repository is still called `stock-api`: the project started as the API behind the back-office.
 
-| New sale | Stock history |
+![The TechSouk online shop: categories, deals and best sellers](docs/screenshots/shop-home.png)
+
+| Product page | Back-office dashboard |
 |---|---|
-| ![New sale: customer, products, live total](docs/screenshots/new-sale.png) | ![Stock history: every change with who and when](docs/screenshots/stock-history.png) |
+| ![Product page: pictures, price drop, availability, add to cart](docs/screenshots/shop-product.png) | ![Dashboard: revenue, sales per day, best sellers, revenue by category, low stock](docs/screenshots/dashboard.png) |
+| **New sale at the counter** | **Stock history** |
+| ![New sale: customer, products with pictures, live total](docs/screenshots/new-sale.png) | ![Stock history: every change with who and when](docs/screenshots/stock-history.png) |
 
 ## What I built, and why
 
@@ -24,9 +26,10 @@ A small shop needs to know three things at any moment: **what is in stock, what 
 This project is a complete, production-style answer to that problem:
 
 - **A Java / Spring Boot API** that keeps stock correct under concurrent sales (row locking, one transaction per sale), records every stock change with who made it and when, and exposes clear reports.
-- **A React dashboard** that a cashier can use all day (new sale in a few clicks, live total, stock and customer search) and that gives the owner the numbers: revenue per day, best sellers, low stock, CSV export.
+- **An online shop** where visitors browse categories, deals and best sellers, see honest availability ("only 2 left") and fill a cart kept in their browser, on the same stock as the counter.
+- **A React back-office** that a cashier can use all day (new sale in a few clicks, live total, stock and customer search) and that gives the owner the numbers: revenue per day, best sellers, low stock, CSV export.
 - **Security built in:** JWT login, hashed passwords, and roles that decide what each person can see and do (cashiers never see revenue).
-- **Built to be maintained:** versioned database migrations, a clean API contract, consistent errors, Docker, and **252 automated tests** on every change, from unit tests up to a real browser making a sale in the running app.
+- **Built to be maintained:** versioned database migrations, a clean API contract, consistent errors, Docker, and **261 automated tests** on every change, from unit tests up to a real browser making a sale in the running app.
 
 Every feature was added through a reviewed pull request with its tests, and bugs found along the way (lost stock updates, N+1 queries, time-zone errors) are covered by tests so they can't come back.
 
@@ -50,7 +53,7 @@ Every feature was added through a reviewed pull request with its tests, and bugs
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **204 backend tests, 41 frontend tests and 7 end-to-end tests** run on every pull request with GitHub Actions: the backend on H2 **and on a real PostgreSQL**, and the end-to-end tests in a **real Chrome** against the whole app running in Docker.
+- **204 backend tests, 48 frontend tests and 9 end-to-end tests** run on every pull request with GitHub Actions: the backend on H2 **and on a real PostgreSQL**, and the end-to-end tests in a **real Chrome** against the whole app running in Docker.
 
 ## Tech stack
 
@@ -65,7 +68,7 @@ Every feature was added through a reviewed pull request with its tests, and bugs
 | Packaging | Docker multi-stage image (non-root), Docker Compose |
 | Security | Spring Security 7, JWT (HS256) via the OAuth2 resource server, BCrypt |
 | Build | Maven (wrapper included) |
-| Web dashboard | React 19, TypeScript, Vite, Mantine (UI and charts), TanStack Query, React Router |
+| Web app (shop and back-office) | React 19, TypeScript, Vite, Mantine (UI and charts), TanStack Query, React Router |
 
 ## Data model
 
@@ -318,9 +321,18 @@ To try it with sample data (a month of sales and a `demo` cashier account with t
    ```
 4. Open http://localhost:8080/swagger-ui.html.
 
-## Web dashboard (React)
+## Web app (React): online shop and back-office
 
-The `frontend/` folder holds a React + TypeScript dashboard for the API:
+The `frontend/` folder holds one React + TypeScript app with two parts.
+
+**The online shop** at `/`, for everyone (no account):
+
+- **Home:** categories with a picture, deals (recent price drops, struck through) and best sellers of the month.
+- **Shop:** all products or one category, search, sorting by name, price or newest; everything is in the address (`/shop?category=phones&sort=price,asc`).
+- **Product page** at a readable address (`/p/1-galaxy-s26`): pictures, price, availability ("only 2 left"), quantity, description, more products of the category.
+- **Cart:** kept in the browser, checked against the latest prices and stock when it's opened; a product that left the shop is flagged.
+
+**The back-office** at `/admin`, for the staff (login):
 
 - **Login** with the API's JWT; the session ends when the token expires.
 - **Dashboard:** revenue, sales, items sold and average sale for 7, 30 or 90 days, a revenue-per-day chart, best sellers, revenue by category, CSV export (admins), and the low-stock list (everyone).
@@ -346,7 +358,7 @@ npm run dev
 
 Open http://localhost:5173/admin. Vite forwards `/api` to the API, so no CORS setup is needed. Checks: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
 
-**End-to-end tests** (`frontend/e2e`, Playwright) drive a real browser through the whole app started with Docker Compose in demo mode: a cashier makes a sale and the stock goes down, a cashier can't see revenue or user management, an admin restocks a product, the demo products are filed in categories, recent price drops are struck through, demo pictures load and an admin adds and deletes one, pages survive a refresh and logout ends the session. They use the Chrome or Edge already installed:
+**End-to-end tests** (`frontend/e2e`, Playwright) drive a real browser through the whole app started with Docker Compose in demo mode: a visitor goes from a category to a product and fills a cart, a product hidden by an admin leaves the shop, a cashier makes a sale and the stock goes down, a cashier can't see revenue or user management, an admin restocks a product, the demo products are filed in categories, recent price drops are struck through, demo pictures load and an admin adds and deletes one, pages survive a refresh and logout ends the session. They use the Chrome or Edge already installed:
 
 ```bash
 BASE_URL=http://localhost:8080 E2E_BROWSER=msedge E2E_ADMIN_PASSWORD=... E2E_CASHIER_PASSWORD=... npm run e2e
@@ -397,6 +409,8 @@ src/main/resources/db/migration
 - [x] Product categories
 - [x] Price history and struck-through old prices
 - [x] Product pictures
+- [x] Online shop: home, categories, product pages, cart
+- [ ] Online orders with cash on delivery
 
 ## Author
 
