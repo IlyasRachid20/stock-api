@@ -21,4 +21,10 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
             + " from Category c left join Product p on p.category = c"
             + " group by c.id, c.name order by lower(c.name)")
     List<CategoryResponse> findAllWithProductCount();
+
+    // Only the categories with products in the online shop, with how many
+    @Query("select new com.ilyas.stockapi.dto.CategoryResponse(c.id, c.name, count(p.id))"
+            + " from Category c join Product p on p.category = c where p.published = true"
+            + " group by c.id, c.name order by lower(c.name)")
+    List<CategoryResponse> findAllWithPublishedProductCount();
 }

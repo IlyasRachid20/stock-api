@@ -8,10 +8,10 @@ export function RequireAuth({ children, adminOnly = false }: { children: ReactNo
   const location = useLocation()
 
   if (!session) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+    return <Navigate to="/admin/login" replace state={{ from: location.pathname + location.search }} />
   }
   if (adminOnly && !isAdmin) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/admin" replace />
   }
   return children
 }

@@ -123,6 +123,7 @@ export function ProductsPage() {
                         <Group gap="sm" wrap="nowrap">
                           <ProductThumb product={p} />
                           {p.name}
+                          {!p.published && <Badge variant="outline" color="gray" size="sm">Hidden from shop</Badge>}
                         </Group>
                       </Table.Td>
                       <Table.Td>{p.category && <Badge variant="light" color="gray" tt="none">{p.category.name}</Badge>}</Table.Td>

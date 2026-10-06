@@ -2,6 +2,7 @@ package com.ilyas.stockapi.controller;
 
 import com.ilyas.stockapi.dto.ProductImageResponse;
 import com.ilyas.stockapi.service.ProductPictureService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -43,6 +44,7 @@ public class ProductPictureController {
 
     // The JPEG, open to everyone (an <img> can't send the login token). A picture never changes:
     // a new upload gets a new id, so browsers may keep it for a year.
+    @SecurityRequirements()
     @GetMapping("/api/images/{imageId}")
     public ResponseEntity<byte[]> image(@PathVariable Long imageId) {
         return ResponseEntity.ok()

@@ -17,6 +17,11 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, Long> {
 
     long countByProductId(Long productId);
 
+    // The products sold the most since then, by quantity
+    @Query("select i.product.id from SaleItem i where i.sale.saleDate >= :since"
+            + " group by i.product.id order by sum(i.quantity) desc, i.product.id")
+    List<Long> findBestSellingProductIds(Instant since, Pageable limit);
+
     // Every sold line between two instants (from included, to excluded), in one query for the reports
     @Query("select new com.ilyas.stockapi.repository.SaleLine(s.id, s.saleDate, c.name, p.id, p.name, cat.id, cat.name,"
             + " i.quantity, i.unitPrice)"

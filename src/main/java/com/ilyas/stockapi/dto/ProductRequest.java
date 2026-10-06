@@ -14,6 +14,7 @@ import java.math.BigDecimal;
  * Changing quantity here is recorded as an ADJUSTMENT; prefer the restock and adjustments endpoints.
  * categoryId is optional: leave it out (or null) for a product without a category.
  * description is optional too; pictures are added with POST /api/products/{id}/images.
+ * published (shown in the online shop) is true when creating and unchanged when updating, if left out.
  */
 public record ProductRequest(
         @NotBlank @Size(max = 150) String name,
@@ -21,7 +22,8 @@ public record ProductRequest(
         @Min(0) Integer quantity,
         @Min(0) Integer minQuantity,
         Long categoryId,
-        @Size(max = 2000) String description) {
+        @Size(max = 2000) String description,
+        Boolean published) {
 
     public ProductRequest {
         name = (name == null) ? null : name.trim();

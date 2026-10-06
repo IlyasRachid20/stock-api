@@ -31,14 +31,14 @@ async function logIn(username: string, password: string) {
 describe('app', () => {
   it('sends visitors without a session to the login page', async () => {
     mockApi({})
-    renderApp('/products')
+    renderApp('/admin/products')
 
     expect(await screen.findByRole('button', { name: 'Sign in' })).toBeInTheDocument()
   })
 
   it('logs an admin in and shows the sales reports and low stock', async () => {
     const calls = mockApi(shopApi(['ADMIN']))
-    renderApp('/')
+    renderApp('/admin')
 
     await logIn('admin', 'secret-password')
 
@@ -56,7 +56,7 @@ describe('app', () => {
 
   it("doesn't show or load the reports for a cashier", async () => {
     const calls = mockApi(shopApi(['CASHIER']))
-    renderApp('/')
+    renderApp('/admin')
 
     await logIn('sara', 'secret-password')
 
@@ -68,7 +68,7 @@ describe('app', () => {
 
   it("shows the API's message when the login fails", async () => {
     mockApi({ 'POST /api/auth/login': [401, { error: 'Invalid username or password' }] })
-    renderApp('/login')
+    renderApp('/admin/login')
 
     await logIn('admin', 'wrong')
 
@@ -77,17 +77,17 @@ describe('app', () => {
 
   it('returns to the page asked for after logging in', async () => {
     mockApi(shopApi(['ADMIN']))
-    const { router } = renderApp('/products')
+    const { router } = renderApp('/admin/products')
 
     await logIn('admin', 'secret-password')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/products'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/admin/products'))
     expect(await screen.findByRole('heading', { name: 'Products' })).toBeInTheDocument()
   })
 
   it('logs out and forgets the session', async () => {
     mockApi(shopApi(['ADMIN']))
-    renderApp('/')
+    renderApp('/admin')
     await logIn('admin', 'secret-password')
     await screen.findByText('Phone Case')
 

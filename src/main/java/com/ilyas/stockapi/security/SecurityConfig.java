@@ -49,7 +49,7 @@ public class SecurityConfig {
     // Open to everyone, with or without a token. Product pictures too: an <img> can't send a token,
     // and they are meant for the online shop anyway
     private static final String[] PUBLIC_PATHS = {
-            "/api/auth/login", "/api/images/*", "/actuator/health", "/error",
+            "/api/auth/login", "/api/images/*", "/api/shop/**", "/actuator/health", "/error",
             "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**"
     };
 

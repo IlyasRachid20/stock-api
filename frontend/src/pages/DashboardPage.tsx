@@ -86,7 +86,7 @@ function SalesReports({ days, onDaysChange, range }: { days: string; onDaysChang
               h={260}
               data={(byDay.data ?? []).map((d) => ({ day: formatDay(d.date), Revenue: d.revenue }))}
               dataKey="day"
-              series={[{ name: 'Revenue', color: 'indigo.6' }]}
+              series={[{ name: 'Revenue', color: 'brand.6' }]}
               curveType="monotone"
               withDots={false}
               valueFormatter={formatMoney}

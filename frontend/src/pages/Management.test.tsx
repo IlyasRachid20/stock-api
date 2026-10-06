@@ -34,7 +34,7 @@ describe('products', () => {
       'GET /api/categories': [200, [phones]],
       'POST /api/products': [400, { errors: { price: 'must be greater than or equal to 0.00' } }],
     })
-    renderApp('/products')
+    renderApp('/admin/products')
 
     await userEvent.click(await screen.findByRole('button', { name: 'New product' }))
     const dialog = await screen.findByRole('dialog')
@@ -44,7 +44,7 @@ describe('products', () => {
 
     expect(await within(dialog).findByText('must be greater than or equal to 0.00')).toBeInTheDocument()
     expect(calls.find((c) => c.method === 'POST')?.body)
-      .toEqual({ name: 'Charger', price: 199, minQuantity: 0, quantity: 0, categoryId: null, description: null })
+      .toEqual({ name: 'Charger', price: 199, minQuantity: 0, quantity: 0, categoryId: null, description: null, published: true })
   })
 
   it('files a new product in a category', async () => {
@@ -54,7 +54,7 @@ describe('products', () => {
       'GET /api/categories': [200, [phones, audio]],
       'POST /api/products': [201, { ...phoneInCategory, id: 5, name: 'Redmi Note 15' }],
     })
-    renderApp('/products')
+    renderApp('/admin/products')
 
     await userEvent.click(await screen.findByRole('button', { name: 'New product' }))
     const dialog = await screen.findByRole('dialog')
@@ -65,7 +65,7 @@ describe('products', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Create' }))
 
     await waitFor(() => expect(calls.find((c) => c.method === 'POST')?.body)
-      .toEqual({ name: 'Redmi Note 15', price: 2899, minQuantity: 0, quantity: 0, categoryId: 3, description: null }))
+      .toEqual({ name: 'Redmi Note 15', price: 2899, minQuantity: 0, quantity: 0, categoryId: 3, description: null, published: true }))
   })
 
   it('shows each product category and filters the list by category, in the address too', async () => {
@@ -74,7 +74,7 @@ describe('products', () => {
       'GET /api/products': [200, page([phoneInCategory])],
       'GET /api/categories': [200, [phones, audio]],
     })
-    const { router } = renderApp('/products')
+    const { router } = renderApp('/admin/products')
 
     expect(await screen.findByRole('cell', { name: 'Phones' })).toBeInTheDocument()
     await userEvent.click(screen.getByLabelText('Category', { selector: 'input' }))
@@ -90,7 +90,7 @@ describe('products', () => {
       'GET /api/products': [200, page([phone])],
       'POST /api/products/1/restock': [200, { ...phone, quantity: 13 }],
     })
-    renderApp('/products')
+    renderApp('/admin/products')
 
     await userEvent.click(await screen.findByRole('button', { name: 'Actions for Galaxy S26' }))
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Restock' }))
@@ -106,7 +106,7 @@ describe('products', () => {
   it('shows a recent price drop with the old price struck through and the reduction', async () => {
     loggedInAs('CASHIER')
     mockApi({ 'GET /api/products': [200, page([reducedPhone, cable])], 'GET /api/categories': [200, []] })
-    renderApp('/products')
+    renderApp('/admin/products')
 
     const row = (await screen.findByText('Galaxy S26')).closest('tr')!
     expect(within(row).getByText('-5%')).toBeInTheDocument()
@@ -127,7 +127,7 @@ describe('products', () => {
         { id: 4, oldPrice: 9999, newPrice: 9500, changedBy: 'admin', changedAt: '2026-09-20T08:00:00Z' },
       ]],
     })
-    renderApp('/products')
+    renderApp('/admin/products')
 
     await userEvent.click(await screen.findByRole('button', { name: 'Actions for Galaxy S26' }))
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Price history' }))
@@ -141,7 +141,7 @@ describe('products', () => {
   it("shows each product's cover picture next to its name", async () => {
     loggedInAs('CASHIER')
     mockApi({ 'GET /api/products': [200, page([phoneWithPictures, cable])], 'GET /api/categories': [200, []] })
-    const { container } = renderApp('/products')
+    const { container } = renderApp('/admin/products')
 
     await screen.findByText('Galaxy S26')
     expect(container.querySelector('img[src="/api/images/8"]')).toBeInTheDocument()
@@ -159,7 +159,7 @@ describe('products', () => {
       'POST /api/products/1/images': [201, picture(10)],
       'PUT /api/products/1/images/9/cover': [200, [picture(9), picture(8)]],
     })
-    renderApp('/products')
+    renderApp('/admin/products')
 
     await userEvent.click(await screen.findByRole('button', { name: 'Actions for Galaxy S26' }))
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Pictures' }))
@@ -178,10 +178,31 @@ describe('products', () => {
     await waitFor(() => expect(calls.some((c) => c.method === 'PUT' && c.url === '/api/products/1/images/9/cover')).toBe(true))
   })
 
+  it('lets an admin hide a product from the online shop, and marks it in the list', async () => {
+    loggedInAs('ADMIN')
+    const calls = mockApi({
+      'GET /api/products': [200, page([{ ...phone, published: true }, { ...cable, published: false }])],
+      'GET /api/categories': [200, []],
+      'PUT /api/products/1': [200, { ...phone, published: false }],
+    })
+    renderApp('/admin/products')
+
+    expect(within((await screen.findByText('USB-C Cable')).closest('tr')!).getByText('Hidden from shop')).toBeInTheDocument()
+    expect(within(screen.getByText('Galaxy S26').closest('tr')!).queryByText('Hidden from shop')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Actions for Galaxy S26' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('switch', { name: /Show in the online shop/ }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(calls.find((c) => c.method === 'PUT')?.body).toMatchObject({ published: false }))
+  })
+
   it('shows no management actions to a cashier', async () => {
     loggedInAs('CASHIER')
     mockApi({ 'GET /api/products': [200, page([phone])] })
-    renderApp('/products')
+    renderApp('/admin/products')
 
     expect(await screen.findByText('Galaxy S26')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'New product' })).not.toBeInTheDocument()
@@ -212,7 +233,7 @@ describe('new sale', () => {
       ...shop,
       'POST /api/sales': [201, { id: 42, customer: { id: 7, name: 'Ahmed' }, saleDate: '2026-09-30T10:00:00Z', items: [{}, {}], total: 9599.8 }],
     })
-    renderApp('/sales/new')
+    renderApp('/admin/sales/new')
 
     await fillCart()
     expect(screen.getByText(/Total: MAD\s9,599\.80/)).toBeInTheDocument()
@@ -228,7 +249,7 @@ describe('new sale', () => {
   it('keeps the cart and explains why when the API refuses the sale', async () => {
     loggedInAs('CASHIER')
     mockApi({ ...shop, 'POST /api/sales': [409, { error: "Not enough stock for product 'Galaxy S26': 0 available, 1 requested" }] })
-    renderApp('/sales/new')
+    renderApp('/admin/sales/new')
 
     await fillCart()
     await userEvent.click(screen.getByRole('button', { name: 'Complete sale' }))
@@ -240,7 +261,7 @@ describe('new sale', () => {
   it('says why the customer list is empty when the API fails', async () => {
     loggedInAs('CASHIER')
     mockApi({ ...shop, 'GET /api/customers': [500, { error: 'Internal server error' }] })
-    renderApp('/sales/new')
+    renderApp('/admin/sales/new')
 
     await userEvent.click(await screen.findByLabelText('Customer', { selector: 'input' }))
 
@@ -250,7 +271,7 @@ describe('new sale', () => {
   it('highlights only "New sale" in the menu on the new sale page', async () => {
     loggedInAs('CASHIER')
     mockApi(shop)
-    renderApp('/sales/new')
+    renderApp('/admin/sales/new')
 
     expect(await screen.findByRole('link', { name: 'New sale' })).toHaveAttribute('data-active')
     const sales = screen.getByRole('link', { name: 'Sales' })
@@ -262,7 +283,7 @@ describe('new sale', () => {
   it('tells the cashier when a product price was just reduced', async () => {
     loggedInAs('CASHIER')
     mockApi({ ...shop, 'GET /api/products': [200, page([reducedPhone])] })
-    renderApp('/sales/new')
+    renderApp('/admin/sales/new')
 
     await userEvent.click(await screen.findByLabelText('Add a product', { selector: 'input' }))
 
@@ -272,7 +293,7 @@ describe('new sale', () => {
   it("can't be completed without a customer", async () => {
     loggedInAs('CASHIER')
     mockApi(shop)
-    renderApp('/sales/new')
+    renderApp('/admin/sales/new')
 
     await userEvent.click(await screen.findByLabelText('Add a product', { selector: 'input' }))
     await userEvent.click(await screen.findByRole('option', { name: /USB-C Cable/ }))
@@ -288,7 +309,7 @@ describe('categories', () => {
       'GET /api/categories': [200, [phones]],
       'POST /api/categories': [409, { error: "A category named 'phones' already exists" }],
     })
-    renderApp('/categories')
+    renderApp('/admin/categories')
 
     await userEvent.click(await screen.findByRole('button', { name: 'New category' }))
     const dialog = await screen.findByRole('dialog')
@@ -305,7 +326,7 @@ describe('categories', () => {
       'GET /api/categories': [200, [phones]],
       'DELETE /api/categories/3': [409, { error: "Category 'Phones' cannot be deleted: it has 1 product(s)" }],
     })
-    renderApp('/categories')
+    renderApp('/admin/categories')
 
     await userEvent.click(await screen.findByRole('button', { name: 'Delete Phones' }))
     await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }))
@@ -321,11 +342,11 @@ describe('categories', () => {
       'GET /api/categories': [200, [phones]],
       'GET /api/products': [200, page([phoneInCategory])],
     })
-    const { router } = renderApp('/categories')
+    const { router } = renderApp('/admin/categories')
 
     await userEvent.click(await screen.findByRole('link', { name: '1 product' }))
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/products'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/admin/products'))
     expect(router.state.location.search).toBe('?category=3')
     await waitFor(() => expect(calls.some((c) => c.url.startsWith('/api/products?') && c.url.includes('categoryId=3'))).toBe(true))
   })
@@ -333,9 +354,9 @@ describe('categories', () => {
   it('keeps cashiers out of category management', async () => {
     loggedInAs('CASHIER')
     const calls = mockApi({ 'GET /api/products/low-stock': [200, page([])] })
-    const { router } = renderApp('/categories')
+    const { router } = renderApp('/admin/categories')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/admin'))
     expect(screen.queryByRole('link', { name: 'Categories' })).not.toBeInTheDocument()
     expect(calls.some((c) => c.url.startsWith('/api/categories'))).toBe(false)
   })
@@ -348,7 +369,7 @@ describe('customers and users', () => {
       'GET /api/customers': [200, page([ahmed])],
       'POST /api/customers': [409, { error: 'Email ahmed@test.com is already used by another customer' }],
     })
-    renderApp('/customers')
+    renderApp('/admin/customers')
 
     await userEvent.click(await screen.findByRole('button', { name: 'New customer' }))
     const dialog = await screen.findByRole('dialog')
@@ -362,9 +383,9 @@ describe('customers and users', () => {
   it('keeps cashiers out of user management', async () => {
     loggedInAs('CASHIER')
     const calls = mockApi({ 'GET /api/products/low-stock': [200, page([])] })
-    const { router } = renderApp('/users')
+    const { router } = renderApp('/admin/users')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/admin'))
     expect(screen.queryByRole('link', { name: 'Users' })).not.toBeInTheDocument()
     expect(calls.some((c) => c.url.startsWith('/api/users'))).toBe(false)
   })
@@ -375,7 +396,7 @@ describe('customers and users', () => {
       'GET /api/users': [200, page([{ id: 1, username: 'admin', role: 'ADMIN', enabled: true }])],
       'POST /api/users': [201, { id: 2, username: 'sara', role: 'CASHIER', enabled: true }],
     })
-    renderApp('/users')
+    renderApp('/admin/users')
 
     expect(await screen.findByText('(you)')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'New user' }))

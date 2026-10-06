@@ -68,6 +68,7 @@ public class ProductService {
         product.setQuantity(request.quantity() != null ? request.quantity() : 0);
         product.setMinQuantity(request.minQuantity() != null ? request.minQuantity() : 0);
         product.setCategory(categoryOf(request.categoryId()));
+        product.setPublished(request.published() == null || request.published());
         productRepository.save(product);
         if (product.getQuantity() > 0) {
             stockMovements.record(product, MovementType.INITIAL, product.getQuantity(), null, null);
@@ -86,6 +87,9 @@ public class ProductService {
         product.setDescription(request.description());
         product.setPrice(request.price());
         product.setCategory(categoryOf(request.categoryId()));
+        if (request.published() != null) {
+            product.setPublished(request.published());
+        }
         if (oldPrice.compareTo(request.price()) != 0) {
             priceHistory.record(product, oldPrice, request.price());
         }

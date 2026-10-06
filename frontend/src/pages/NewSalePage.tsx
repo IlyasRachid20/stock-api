@@ -93,7 +93,7 @@ export function NewSalePage() {
 
       {lastSale && (
         <Alert color="green" title={`Sale #${lastSale.id} recorded`}>
-          {lastSale.items.length} line(s), total {formatMoney(lastSale.total)}. <Link to="/sales">See all sales</Link>
+          {lastSale.items.length} line(s), total {formatMoney(lastSale.total)}. <Link to="/admin/sales">See all sales</Link>
         </Alert>
       )}
 

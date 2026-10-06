@@ -38,7 +38,7 @@ class DashboardServingTests {
 
 	// React handles these pages itself: opening or refreshing them must return the dashboard, not a 404
 	@ParameterizedTest
-	@ValueSource(strings = {"/login", "/sales/new", "/products", "/stock-history", "/users"})
+	@ValueSource(strings = {"/admin", "/admin/login", "/admin/sales/new", "/admin/products", "/admin/users", "/shop", "/p/1-galaxy-s26"})
 	void dashboardPagesReturnTheDashboard(String page) throws Exception {
 		mockMvc.perform(get(page))
 				.andExpect(status().isOk())
