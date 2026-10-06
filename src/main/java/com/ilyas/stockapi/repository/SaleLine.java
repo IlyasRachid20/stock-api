@@ -10,6 +10,8 @@ public record SaleLine(
         String customerName,
         Long productId,
         String productName,
+        Long categoryId,
+        String categoryName,
         Integer quantity,
         BigDecimal unitPrice) {
 

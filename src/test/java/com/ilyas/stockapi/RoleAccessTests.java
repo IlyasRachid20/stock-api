@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
  *   customers    | yes  | yes  | yes  | no       a cashier registers customers at the till
  *   sales        | yes  | yes  |  -   | no       a cashier can't erase a sale
  *   sale-items   | yes  | yes  |  -   | no
+ *   categories   | yes  | no   | no   | no
  *
  * "no" means 403 Forbidden, checked before the request reaches the controller.
  */
@@ -85,6 +86,7 @@ class RoleAccessTests {
 		mockMvc.perform(get("/api/customers")).andExpect(status().isOk());
 		mockMvc.perform(get("/api/sales")).andExpect(status().isOk());
 		mockMvc.perform(get("/api/sale-items")).andExpect(status().isOk());
+		mockMvc.perform(get("/api/categories")).andExpect(status().isOk());
 	}
 
 	@Test
@@ -116,6 +118,14 @@ class RoleAccessTests {
 	@Test
 	void cashierCannotDeleteProducts() throws Exception {
 		mockMvc.perform(delete("/api/products/" + productId)).andExpect(status().isForbidden());
+	}
+
+	@Test
+	void cashierCannotManageCategories() throws Exception {
+		// The ids don't need to exist: the role check happens before the controller runs
+		mockMvc.perform(json(post("/api/categories"), "{\"name\":\"Audio\"}")).andExpect(status().isForbidden());
+		mockMvc.perform(json(put("/api/categories/999999"), "{\"name\":\"Audio\"}")).andExpect(status().isForbidden());
+		mockMvc.perform(delete("/api/categories/999999")).andExpect(status().isForbidden());
 	}
 
 	@Test

@@ -24,6 +24,11 @@ public class Product {
     @Column(name = "min_quantity", nullable = false)
     private Integer minQuantity = 0;
 
+    // Optional: products without a category are "uncategorized"
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+
     // Getters and setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -39,6 +44,9 @@ public class Product {
 
     public Integer getMinQuantity() { return minQuantity; }
     public void setMinQuantity(Integer minQuantity) { this.minQuantity = minQuantity; }
+
+    public Category getCategory() { return category; }
+    public void setCategory(Category category) { this.category = category; }
 
     public boolean isLowStock() { return quantity <= minQuantity; }
 }

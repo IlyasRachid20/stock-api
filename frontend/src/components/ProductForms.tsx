@@ -1,6 +1,7 @@
-import { Button, Group, Modal, NumberInput, Stack, Text, TextInput } from '@mantine/core'
+import { Button, Group, Modal, NumberInput, Select, Stack, Text, TextInput } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { useMutation } from '@tanstack/react-query'
+import { useCategories } from '../api/categories'
 import { api } from '../api/client'
 import type { Product } from '../api/types'
 import { notifySuccess, showApiErrors } from '../utils/notify'
@@ -14,9 +15,11 @@ interface ModalProps {
 // Create (product = null) or edit a product. Stock is changed with restock / correction instead.
 export function ProductFormModal({ opened, onClose, product }: ModalProps & { product: Product | null }) {
   const refresh = useRefreshStock()
+  const categories = useCategories()
   const form = useForm({
     initialValues: {
       name: product?.name ?? '',
+      categoryId: product?.category ? String(product.category.id) : (null as string | null),
       price: product?.price ?? ('' as number | string),
       quantity: 0 as number | string,
       minQuantity: product?.minQuantity ?? (0 as number | string),
@@ -29,7 +32,12 @@ export function ProductFormModal({ opened, onClose, product }: ModalProps & { pr
 
   const save = useMutation({
     mutationFn: (values: typeof form.values) => {
-      const body = { name: values.name, price: Number(values.price), minQuantity: Number(values.minQuantity) || 0 }
+      const body = {
+        name: values.name,
+        price: Number(values.price),
+        minQuantity: Number(values.minQuantity) || 0,
+        categoryId: values.categoryId ? Number(values.categoryId) : null,
+      }
       return product
         ? api<Product>(`/api/products/${product.id}`, { method: 'PUT', body })
         : api<Product>('/api/products', { method: 'POST', body: { ...body, quantity: Number(values.quantity) || 0 } })
@@ -47,6 +55,13 @@ export function ProductFormModal({ opened, onClose, product }: ModalProps & { pr
       <form onSubmit={form.onSubmit((values) => save.mutate(values))}>
         <Stack>
           <TextInput label="Name" data-autofocus {...form.getInputProps('name')} />
+          <Select
+            label="Category"
+            placeholder="No category"
+            clearable
+            data={(categories.data ?? []).map((c) => ({ value: String(c.id), label: c.name }))}
+            {...form.getInputProps('categoryId')}
+          />
           <NumberInput label="Price (MAD)" min={0} decimalScale={2} fixedDecimalScale {...form.getInputProps('price')} />
           {!product && <NumberInput label="Initial stock" min={0} allowDecimal={false} {...form.getInputProps('quantity')} />}
           <NumberInput label="Minimum stock (low-stock alert)" min={0} allowDecimal={false} {...form.getInputProps('minQuantity')} />

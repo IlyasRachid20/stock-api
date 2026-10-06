@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.ilyas.stockapi.repository.CategoryRepository;
 import com.ilyas.stockapi.repository.CustomerRepository;
 import com.ilyas.stockapi.repository.ProductRepository;
 import com.ilyas.stockapi.repository.SaleItemRepository;
@@ -56,12 +57,16 @@ class QueryCountTests {
 	@Autowired
 	private CustomerRepository customerRepository;
 
+	@Autowired
+	private CategoryRepository categoryRepository;
+
 	@AfterEach
 	void cleanUp() {
 		stockMovementRepository.deleteAll();
 		saleItemRepository.deleteAll();
 		saleRepository.deleteAll();
 		productRepository.deleteAll();
+		categoryRepository.deleteAll();
 		customerRepository.deleteAll();
 	}
 
@@ -88,6 +93,27 @@ class QueryCountTests {
 		// sales page + customers + items + products, each loaded in one batch.
 		// Without batching this was 1 + 10 (items) + 10 (customers) + 20 (products).
 		assertThat(statistics.getPrepareStatementCount()).isLessThanOrEqualTo(5);
+	}
+
+	@Test
+	void listingProductsLoadsTheirCategoriesInOneQuery() throws Exception {
+		for (int i = 1; i <= 5; i++) {
+			long category = idOf(postJson("/api/categories", "{\"name\":\"Category " + i + "\"}"));
+			for (int j = 1; j <= 2; j++) {
+				postJson("/api/products", "{\"name\":\"Product " + i + "-" + j + "\",\"price\":10.00,\"categoryId\":" + category + "}");
+			}
+		}
+
+		Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+		statistics.clear();
+
+		mockMvc.perform(get("/api/products?size=20"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content.length()").value(10))
+				.andExpect(jsonPath("$.content[0].category.name").exists());
+
+		// products page + their 5 categories in one batch (+ the total count when needed)
+		assertThat(statistics.getPrepareStatementCount()).isLessThanOrEqualTo(3);
 	}
 
 	private ResultActions postJson(String path, String body) throws Exception {

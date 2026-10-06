@@ -81,6 +81,22 @@ class PaginationAndSearchTests {
 		mockMvc.perform(get("/api/products?sort=color"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.error").value("Cannot sort by unknown field 'color'"));
+		// Also on the lists that have filters
+		mockMvc.perform(get("/api/products?search=galaxy&categoryId=1&sort=color")).andExpect(status().isBadRequest());
+		mockMvc.perform(get("/api/customers?search=ahmed&sort=color")).andExpect(status().isBadRequest());
+		mockMvc.perform(get("/api/stock-movements?type=SALE&sort=color")).andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void percentAndUnderscoreInASearchAreNotWildcards() throws Exception {
+		createProduct("Case 100% recycled", "129.00");
+		createProduct("Galaxy S26", "9500.00");
+		createProduct("USB_C Cable", "49.90");
+
+		mockMvc.perform(get("/api/products").param("search", "%"))
+				.andExpect(jsonPath("$.content[*].name", contains("Case 100% recycled")));
+		mockMvc.perform(get("/api/products").param("search", "_"))
+				.andExpect(jsonPath("$.content[*].name", contains("USB_C Cable")));
 	}
 
 	@Test

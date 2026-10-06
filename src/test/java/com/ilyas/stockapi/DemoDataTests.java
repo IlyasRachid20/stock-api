@@ -8,7 +8,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ilyas.stockapi.demo.DemoDataLoader;
+import com.ilyas.stockapi.dto.CategoryResponse;
 import com.ilyas.stockapi.repository.AppUserRepository;
+import com.ilyas.stockapi.repository.CategoryRepository;
 import com.ilyas.stockapi.repository.CustomerRepository;
 import com.ilyas.stockapi.repository.ProductRepository;
 import com.ilyas.stockapi.repository.SaleItemRepository;
@@ -59,6 +61,9 @@ class DemoDataTests {
 	@Autowired
 	private StockMovementRepository stockMovementRepository;
 
+	@Autowired
+	private CategoryRepository categoryRepository;
+
 	@BeforeAll
 	void loadDemoShopIntoAnEmptyDatabase() throws Exception {
 		deleteShopData();
@@ -76,6 +81,7 @@ class DemoDataTests {
 		saleItemRepository.deleteAll();
 		saleRepository.deleteAll();
 		productRepository.deleteAll();
+		categoryRepository.deleteAll();
 		customerRepository.deleteAll();
 	}
 
@@ -90,11 +96,23 @@ class DemoDataTests {
 	}
 
 	@Test
+	void everyDemoProductIsInOneOfFourCategories() {
+		assertThat(categoryRepository.findAllWithProductCount())
+				.extracting(CategoryResponse::name, CategoryResponse::productCount)
+				.containsExactly(
+						org.assertj.core.groups.Tuple.tuple("Audio", 1L),
+						org.assertj.core.groups.Tuple.tuple("Chargers & cables", 2L),
+						org.assertj.core.groups.Tuple.tuple("Phones", 3L),
+						org.assertj.core.groups.Tuple.tuple("Protection", 2L));
+	}
+
+	@Test
 	void runningAgainAddsNothing() throws Exception {
 		long salesBefore = saleRepository.count();
 		demoDataLoader.run(null);
 
 		assertThat(productRepository.count()).isEqualTo(8);
+		assertThat(categoryRepository.count()).isEqualTo(4);
 		assertThat(saleRepository.count()).isEqualTo(salesBefore);
 	}
 

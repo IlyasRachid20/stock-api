@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { ActionIcon, Badge, Button, Group, Menu, Pagination, Stack, Table, Text, TextInput, Title } from '@mantine/core'
+import { ActionIcon, Badge, Button, Group, Menu, Pagination, Select, Stack, Table, Text, TextInput, Title } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
 import { IconAdjustments, IconDots, IconEdit, IconPlus, IconSearch, IconTrash, IconTruckDelivery } from '@tabler/icons-react'
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router'
+import { useCategories } from '../api/categories'
 import { api } from '../api/client'
 import type { Page, Product } from '../api/types'
 import { useAuth } from '../auth/useAuth'
@@ -27,13 +29,19 @@ export function ProductsPage() {
   const [debouncedSearch] = useDebouncedValue(search, 300)
   const [page, setPage] = useState(1)
   const [dialog, setDialog] = useState<Dialog>(null)
+  // The category filter is in the address, so the Categories page can link to it
+  const [params, setParams] = useSearchParams()
+  const categoryId = params.get('category')
+  const categories = useCategories()
   const refresh = useRefreshStock()
   const close = () => setDialog(null)
 
   const products = useQuery({
-    queryKey: ['products', { search: debouncedSearch, page }],
+    queryKey: ['products', { search: debouncedSearch, categoryId, page }],
     queryFn: () =>
-      api<Page<Product>>('/api/products', { query: { search: debouncedSearch, page: page - 1, size: PAGE_SIZE, sort: 'name,asc' } }),
+      api<Page<Product>>('/api/products', {
+        query: { search: debouncedSearch, categoryId, page: page - 1, size: PAGE_SIZE, sort: 'name,asc' },
+      }),
     // Keep the current rows on screen while the next page loads
     placeholderData: keepPreviousData,
   })
@@ -64,63 +72,82 @@ export function ProductsPage() {
         </Group>
       </Group>
 
-      <TextInput
-        placeholder="Search by name"
-        leftSection={<IconSearch size={16} />}
-        value={search}
-        onChange={(e) => {
-          setSearch(e.currentTarget.value)
-          setPage(1)
-        }}
-        maw={360}
-      />
+      <Group>
+        <TextInput
+          placeholder="Search by name"
+          leftSection={<IconSearch size={16} />}
+          value={search}
+          onChange={(e) => {
+            setSearch(e.currentTarget.value)
+            setPage(1)
+          }}
+          w={300}
+        />
+        <Select
+          aria-label="Category"
+          placeholder="All categories"
+          clearable
+          data={(categories.data ?? []).map((c) => ({ value: String(c.id), label: c.name }))}
+          value={categoryId}
+          onChange={(value) => {
+            setParams(value ? { category: value } : {})
+            setPage(1)
+          }}
+          w={220}
+        />
+      </Group>
 
       <QueryState isPending={products.isPending} error={products.error}>
         {products.data && (
           <>
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Name</Table.Th>
-                  <Table.Th ta="right">Price</Table.Th>
-                  <Table.Th ta="right">In stock</Table.Th>
-                  <Table.Th ta="right">Minimum</Table.Th>
-                  <Table.Th />
-                  {isAdmin && <Table.Th />}
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {products.data.content.map((p) => (
-                  <Table.Tr key={p.id}>
-                    <Table.Td>{p.name}</Table.Td>
-                    <Table.Td ta="right">{formatMoney(p.price)}</Table.Td>
-                    <Table.Td ta="right">{p.quantity}</Table.Td>
-                    <Table.Td ta="right">{p.minQuantity}</Table.Td>
-                    <Table.Td>
-                      {p.quantity === 0 ? <Badge color="red">Out of stock</Badge>
-                        : p.lowStock ? <Badge color="orange">Low stock</Badge> : null}
-                    </Table.Td>
-                    {isAdmin && (
-                      <Table.Td ta="right">
-                        <Menu position="bottom-end">
-                          <Menu.Target>
-                            <ActionIcon variant="subtle" aria-label={`Actions for ${p.name}`}><IconDots size={18} /></ActionIcon>
-                          </Menu.Target>
-                          <Menu.Dropdown>
-                            <Menu.Item leftSection={<IconTruckDelivery size={16} />} onClick={() => setDialog({ kind: 'restock', product: p })}>Restock</Menu.Item>
-                            <Menu.Item leftSection={<IconAdjustments size={16} />} onClick={() => setDialog({ kind: 'adjust', product: p })}>Stock correction</Menu.Item>
-                            <Menu.Item leftSection={<IconEdit size={16} />} onClick={() => setDialog({ kind: 'edit', product: p })}>Edit</Menu.Item>
-                            <Menu.Divider />
-                            <Menu.Item color="red" leftSection={<IconTrash size={16} />} onClick={() => setDialog({ kind: 'delete', product: p })}>Delete</Menu.Item>
-                          </Menu.Dropdown>
-                        </Menu>
-                      </Table.Td>
-                    )}
+            {/* On a phone the table scrolls sideways inside its box instead of widening the page */}
+            <Table.ScrollContainer minWidth={760}>
+              <Table striped highlightOnHover>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Name</Table.Th>
+                    <Table.Th>Category</Table.Th>
+                    <Table.Th ta="right">Price</Table.Th>
+                    <Table.Th ta="right">In stock</Table.Th>
+                    <Table.Th ta="right">Minimum</Table.Th>
+                    <Table.Th />
+                    {isAdmin && <Table.Th />}
                   </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-            {products.data.content.length === 0 && <Text c="dimmed">No product matches "{debouncedSearch}"</Text>}
+                </Table.Thead>
+                <Table.Tbody>
+                  {products.data.content.map((p) => (
+                    <Table.Tr key={p.id}>
+                      <Table.Td>{p.name}</Table.Td>
+                      <Table.Td>{p.category && <Badge variant="light" color="gray" tt="none">{p.category.name}</Badge>}</Table.Td>
+                      <Table.Td ta="right">{formatMoney(p.price)}</Table.Td>
+                      <Table.Td ta="right">{p.quantity}</Table.Td>
+                      <Table.Td ta="right">{p.minQuantity}</Table.Td>
+                      <Table.Td>
+                        {p.quantity === 0 ? <Badge color="red">Out of stock</Badge>
+                          : p.lowStock ? <Badge color="orange">Low stock</Badge> : null}
+                      </Table.Td>
+                      {isAdmin && (
+                        <Table.Td ta="right">
+                          <Menu position="bottom-end">
+                            <Menu.Target>
+                              <ActionIcon variant="subtle" aria-label={`Actions for ${p.name}`}><IconDots size={18} /></ActionIcon>
+                            </Menu.Target>
+                            <Menu.Dropdown>
+                              <Menu.Item leftSection={<IconTruckDelivery size={16} />} onClick={() => setDialog({ kind: 'restock', product: p })}>Restock</Menu.Item>
+                              <Menu.Item leftSection={<IconAdjustments size={16} />} onClick={() => setDialog({ kind: 'adjust', product: p })}>Stock correction</Menu.Item>
+                              <Menu.Item leftSection={<IconEdit size={16} />} onClick={() => setDialog({ kind: 'edit', product: p })}>Edit</Menu.Item>
+                              <Menu.Divider />
+                              <Menu.Item color="red" leftSection={<IconTrash size={16} />} onClick={() => setDialog({ kind: 'delete', product: p })}>Delete</Menu.Item>
+                            </Menu.Dropdown>
+                          </Menu>
+                        </Table.Td>
+                      )}
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+            {products.data.content.length === 0 && <Text c="dimmed">No products found</Text>}
             {products.data.page.totalPages > 1 && (
               <Pagination total={products.data.page.totalPages} value={page} onChange={setPage} />
             )}

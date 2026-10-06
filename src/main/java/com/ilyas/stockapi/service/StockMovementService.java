@@ -37,7 +37,8 @@ public class StockMovementService {
     }
 
     public Page<StockMovementResponse> find(Long productId, MovementType type, Pageable pageable) {
-        return movementRepository.search(productId, type, pageable).map(StockMovementResponse::from);
+        return movementRepository.findAll(StockMovementRepository.matching(productId, type), pageable)
+                .map(StockMovementResponse::from);
     }
 
     @Transactional

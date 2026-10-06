@@ -60,12 +60,12 @@ jobs:
           # "legacy" looks like a database created before Flyway: tables exist, no Flyway history
           psql -d legacy -v ON_ERROR_STOP=1 -f src/main/resources/db/migration/V1__create_tables.sql
 
-      - name: Tests on an empty database (Flyway runs V1 and V2)
+      - name: Tests on an empty database (Flyway runs every migration)
         run: ./mvnw -B test
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/fresh
 
-      - name: Tests on a pre-Flyway database (Flyway baselines at V1, then runs V2)
+      - name: Tests on a pre-Flyway database (Flyway baselines at V1, then runs the others)
         run: ./mvnw -B test
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/legacy
@@ -78,6 +78,7 @@ jobs:
           grep -qx "3 SQL" history.txt
           grep -qx "4 SQL" history.txt
           grep -qx "5 SQL" history.txt
+          grep -qx "6 SQL" history.txt
 
   # Builds the Docker image and starts the full stack with Docker Compose,
   # then sends real requests to check it works end to end.

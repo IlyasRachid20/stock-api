@@ -25,10 +25,7 @@ public class CustomerService {
     }
 
     public Page<CustomerResponse> find(String search, Pageable pageable) {
-        var page = (search == null || search.isBlank())
-                ? customerRepository.findAll(pageable)
-                : customerRepository.search(search.trim(), pageable);
-        return page.map(CustomerResponse::from);
+        return customerRepository.findAll(CustomerRepository.matching(search), pageable).map(CustomerResponse::from);
     }
 
     public CustomerResponse get(Long id) {
