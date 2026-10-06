@@ -1,13 +1,22 @@
 // This file holds the route configuration, not components meant for hot reload
 /* oxlint-disable react/only-export-components */
 import { lazy } from 'react'
-import { createBrowserRouter, Navigate } from 'react-router'
+import { createBrowserRouter } from 'react-router'
 import { RequireAuth } from './auth/RequireAuth'
 import { AppLayout } from './layout/AppLayout'
 import { LoginPage } from './pages/LoginPage'
+import { StoreLayout } from './store/StoreLayout'
 
 // Each page is downloaded the first time it's opened, so the login page stays small
 // and the charts library only loads with the dashboard
+// The online shop's pages
+const HomePage = lazy(() => import('./store/HomePage').then((m) => ({ default: m.HomePage })))
+const ShopPage = lazy(() => import('./store/ShopPage').then((m) => ({ default: m.ShopPage })))
+const ProductPage = lazy(() => import('./store/ProductPage').then((m) => ({ default: m.ProductPage })))
+const CartPage = lazy(() => import('./store/CartPage').then((m) => ({ default: m.CartPage })))
+const StoreNotFoundPage = lazy(() => import('./store/StoreNotFoundPage').then((m) => ({ default: m.StoreNotFoundPage })))
+
+// The staff area
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const ProductsPage = lazy(() => import('./pages/ProductsPage').then((m) => ({ default: m.ProductsPage })))
 const StockHistoryPage = lazy(() => import('./pages/StockHistoryPage').then((m) => ({ default: m.StockHistoryPage })))
@@ -18,9 +27,19 @@ const CustomersPage = lazy(() => import('./pages/CustomersPage').then((m) => ({ 
 const UsersPage = lazy(() => import('./pages/UsersPage').then((m) => ({ default: m.UsersPage })))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
 
-// The staff area (back-office) is under /admin; the root of the site is for the online shop
+// The online shop at the root of the site, the staff area (back-office) under /admin
 export const routes = [
-  { path: '/', element: <Navigate to="/admin" replace /> },
+  {
+    path: '/',
+    element: <StoreLayout />,
+    children: [
+      { index: true, element: <HomePage /> },
+      { path: 'shop', element: <ShopPage /> },
+      { path: 'p/:idSlug', element: <ProductPage /> },
+      { path: 'cart', element: <CartPage /> },
+      { path: '*', element: <StoreNotFoundPage /> },
+    ],
+  },
   { path: '/admin/login', element: <LoginPage /> },
   {
     path: '/admin',

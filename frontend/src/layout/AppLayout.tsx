@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { AppShell, Badge, Burger, Button, Center, Group, Loader, NavLink, Text } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
-import { IconBox, IconCashRegister, IconCategory, IconGauge, IconHistory, IconLogout, IconReceipt, IconUserShield, IconUsers } from '@tabler/icons-react'
+import { IconBox, IconBuildingStore, IconCashRegister, IconCategory, IconGauge, IconHistory, IconLogout, IconReceipt, IconUserShield, IconUsers } from '@tabler/icons-react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { useAuth } from '../auth/useAuth'
 import { Logo } from '../components/Logo'
@@ -35,6 +35,9 @@ export function AppLayout() {
             <Logo size="sm" subtitle="Back-office" />
           </Group>
           <Group gap="sm">
+            <Button component={Link} to="/" variant="subtle" size="xs" leftSection={<IconBuildingStore size={16} />} visibleFrom="sm">
+              View shop
+            </Button>
             <Text size="sm" visibleFrom="xs">{session?.username}</Text>
             <Badge color={isAdmin ? 'grape' : 'blue'} variant="light">{isAdmin ? 'Admin' : 'Cashier'}</Badge>
             <Button variant="subtle" size="xs" leftSection={<IconLogout size={16} />} onClick={logout}>

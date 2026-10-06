@@ -1,4 +1,4 @@
-// Takes the README screenshots from a running demo (API in demo mode + the dashboard).
+// Takes the README screenshots from a running demo (API in demo mode + the shop and back-office).
 //
 //   BASE_URL=http://localhost:5173 ADMIN_PASSWORD=... node scripts/screenshots.mjs
 //
@@ -23,6 +23,16 @@ const shot = async (name) => {
   console.log(`saved ${name}.png`)
 }
 
+// The online shop, as a visitor sees it
+await page.goto(`${baseUrl}/`)
+await page.getByText('Shop by category').waitFor()
+await shot('shop-home')
+
+await page.goto(`${baseUrl}/p/1`)
+await page.getByRole('heading', { name: 'Galaxy S26' }).waitFor()
+await shot('shop-product')
+
+// The back-office
 await page.goto(`${baseUrl}/admin/login`)
 await shot('login')
 

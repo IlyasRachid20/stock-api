@@ -31,6 +31,15 @@ async function stockOf(page: Page, product: string): Promise<number> {
 // An 8 x 8 blue PNG
 const TINY_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGNQSLiAFTEMLQkApqhUAUiRg/kAAAAASUVORK5CYII='
 
+async function showInShop(page: Page, product: string, shown: boolean) {
+  await page.goto('/admin/products')
+  await page.getByRole('button', { name: `Actions for ${product}` }).click()
+  await page.getByRole('menuitem', { name: 'Edit' }).click()
+  await page.getByRole('switch', { name: /Show in the online shop/ }).setChecked(shown)
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+}
+
 async function pick(page: Page, field: string, option: RegExp) {
   await page.getByRole('combobox', { name: field }).click()
   await page.getByRole('option', { name: option }).click()
@@ -141,6 +150,38 @@ test('demo products have pictures, and an admin adds one and deletes it', async 
   // Deleted again, so the test can run again on the same data
   await dialog.getByRole('button', { name: 'Delete picture 2' }).click()
   await expect(dialog.getByAltText(/^Picture \d+ of Redmi Note 15$/)).toHaveCount(1)
+})
+
+test('a visitor browses the shop and fills a cart without logging in', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: /Phones and accessories/ })).toBeVisible()
+
+  await page.getByRole('link', { name: /Phones \d+ products/ }).click()
+  await expect(page.getByRole('heading', { name: 'Phones', level: 1 })).toBeVisible()
+  await page.getByRole('link', { name: 'Redmi Note 15' }).click()
+  await expect(page).toHaveURL(/\/p\/\d+-redmi-note-15$/)
+
+  await page.getByRole('textbox', { name: 'Quantity' }).fill('2')
+  await page.getByRole('button', { name: 'Add to cart' }).click()
+  await expect(page.getByRole('dialog', { name: 'Your cart (2)' })).toBeVisible()
+  await page.getByRole('link', { name: 'View cart' }).click()
+  await expect(page.getByText(/MAD\s5,798\.00/).first()).toBeVisible()
+
+  // The cart is kept in the browser
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Cart, 2 items' })).toBeVisible()
+})
+
+test('a product hidden by an admin disappears from the shop', async ({ page }) => {
+  await logIn(page, admin)
+  await showInShop(page, 'Screen Protector', false)
+  await page.goto('/shop?search=screen')
+  await expect(page.getByText('No products found. Try another search or category.')).toBeVisible()
+
+  // Shown again, so the test can run again on the same data
+  await showInShop(page, 'Screen Protector', true)
+  await page.goto('/shop?search=screen')
+  await expect(page.getByRole('link', { name: 'Screen Protector' })).toBeVisible()
 })
 
 test('pages survive a browser refresh, and logging out ends the session', async ({ page }) => {
