@@ -14,6 +14,9 @@ const HomePage = lazy(() => import('./store/HomePage').then((m) => ({ default: m
 const ShopPage = lazy(() => import('./store/ShopPage').then((m) => ({ default: m.ShopPage })))
 const ProductPage = lazy(() => import('./store/ProductPage').then((m) => ({ default: m.ProductPage })))
 const CartPage = lazy(() => import('./store/CartPage').then((m) => ({ default: m.CartPage })))
+const CheckoutPage = lazy(() => import('./store/CheckoutPage').then((m) => ({ default: m.CheckoutPage })))
+const OrderPage = lazy(() => import('./store/OrderPage').then((m) => ({ default: m.OrderPage })))
+const TrackPage = lazy(() => import('./store/OrderPage').then((m) => ({ default: m.TrackPage })))
 const StoreNotFoundPage = lazy(() => import('./store/StoreNotFoundPage').then((m) => ({ default: m.StoreNotFoundPage })))
 
 // The staff area
@@ -37,6 +40,9 @@ export const routes = [
       { path: 'shop', element: <ShopPage /> },
       { path: 'p/:idSlug', element: <ProductPage /> },
       { path: 'cart', element: <CartPage /> },
+      { path: 'checkout', element: <CheckoutPage /> },
+      { path: 'order/:number', element: <OrderPage /> },
+      { path: 'track', element: <TrackPage /> },
       { path: '*', element: <StoreNotFoundPage /> },
     ],
   },

@@ -8,9 +8,11 @@ import com.ilyas.stockapi.entity.Customer;
 import com.ilyas.stockapi.entity.MovementType;
 import com.ilyas.stockapi.entity.Product;
 import com.ilyas.stockapi.entity.Sale;
+import com.ilyas.stockapi.entity.SaleChannel;
 import com.ilyas.stockapi.entity.SaleItem;
 import com.ilyas.stockapi.exception.BadRequestException;
 import com.ilyas.stockapi.exception.ConflictException;
+import com.ilyas.stockapi.exception.NotEnoughStockException;
 import com.ilyas.stockapi.exception.NotFoundException;
 import com.ilyas.stockapi.repository.CustomerRepository;
 import com.ilyas.stockapi.repository.ProductRepository;
@@ -23,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Comparator;
+import java.util.List;
 
 /**
  * Creates and deletes sales and sale items while keeping product stock in sync:
@@ -78,17 +81,27 @@ public class SaleService {
         sale.setCustomer(customer);
         saleRepository.save(sale);
         if (request.items() != null) {
-            // Same order in every sale, so two sales locking the same products can't deadlock
-            request.items().stream()
-                    .sorted(Comparator.comparing(SaleRequest.Item::productId))
-                    .forEach(item -> sell(sale, item.productId(), item.quantity(), item.unitPrice()));
+            addLines(sale, request.items());
         }
         return SaleResponse.from(sale);
+    }
+
+    // Takes every line out of stock, in the same order in every sale (by product), so two sales
+    // locking the same products can't deadlock. All or nothing: the caller's transaction rolls back
+    // if any product is missing or short. Also used for online orders (see shop.OrderService).
+    @Transactional
+    public void addLines(Sale sale, List<SaleRequest.Item> items) {
+        items.stream()
+                .sorted(Comparator.comparing(SaleRequest.Item::productId))
+                .forEach(item -> sell(sale, item.productId(), item.quantity(), item.unitPrice()));
     }
 
     @Transactional
     public void deleteSale(Long saleId) {
         Sale sale = saleRepository.findById(saleId).orElseThrow(NotFoundException::new);
+        if (sale.getChannel() == SaleChannel.ONLINE) {
+            throw new ConflictException("Online order " + sale.getOrderNumber() + " can't be deleted: cancel it instead");
+        }
         for (SaleItem item : saleItemRepository.findBySaleId(saleId)) {
             returnToStock(item);
             saleItemRepository.delete(item);
@@ -111,8 +124,7 @@ public class SaleService {
                 .orElseThrow(() -> new BadRequestException("Product " + productId + " does not exist"));
 
         if (product.getQuantity() < quantity) {
-            throw new ConflictException("Not enough stock for product '" + product.getName() + "': "
-                    + product.getQuantity() + " available, " + quantity + " requested");
+            throw new NotEnoughStockException(product.getName(), product.getQuantity(), quantity);
         }
         product.setQuantity(product.getQuantity() - quantity);
 

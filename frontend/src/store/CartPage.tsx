@@ -10,12 +10,14 @@ import { SHOP } from '../shop'
 import { formatMoney } from '../utils/format'
 import { useCart } from './cart/useCart'
 import { AvailabilityText, ProductPicture } from './ProductBits'
-import { productPath, type ShopProduct } from './types'
+import { useShopInfo } from './queries'
+import { deliveryFeeFor, productPath, type ShopProduct } from './types'
 
 // The cart, checked against the shop's latest prices and stock
 export function CartPage() {
   useDocumentTitle(`Your cart · ${SHOP.name}`)
   const cart = useCart()
+  const info = useShopInfo()
   const ids = cart.lines.map((line) => line.productId)
   const latest = useQuery({
     queryKey: ['shop', 'cart', ids],
@@ -96,21 +98,21 @@ export function CartPage() {
                 <Text c="dimmed">Items ({cart.count})</Text>
                 <Text>{formatMoney(cart.subtotal)}</Text>
               </Group>
-              <Group justify="space-between">
-                <Text c="dimmed">Delivery</Text>
-                <Text size="sm" c="dimmed">At checkout</Text>
-              </Group>
+              {info.data && <DeliveryLine subtotal={cart.subtotal} deliveryFee={deliveryFeeFor(cart.subtotal, info.data)}
+                freeFrom={info.data.freeDeliveryFrom} />}
               <Divider />
               <Group justify="space-between">
-                <Text fw={700}>Subtotal</Text>
-                <Text fw={800} fz="xl">{formatMoney(cart.subtotal)}</Text>
+                <Text fw={700}>Total</Text>
+                <Text fw={800} fz="xl">{formatMoney(cart.subtotal + (info.data ? deliveryFeeFor(cart.subtotal, info.data) : 0))}</Text>
               </Group>
               {unavailable.length > 0 && (
                 <Alert color="orange" variant="light">
                   Remove the products that are no longer available to continue.
                 </Alert>
               )}
-              <Button size="md" disabled title="Ordering opens soon">Checkout</Button>
+              <Button size="md" component={Link} to="/checkout" disabled={unavailable.length > 0 || latest.isPending}>
+                Checkout
+              </Button>
               <Text size="xs" c="dimmed" ta="center">You pay cash when your parcel arrives.</Text>
               <Button variant="subtle" component={Link} to="/shop">Continue shopping</Button>
             </Stack>
@@ -118,5 +120,22 @@ export function CartPage() {
         </Grid.Col>
       </Grid>
     </Container>
+  )
+}
+
+// "Delivery MAD 30.00", with how much more to spend for free delivery
+export function DeliveryLine({ subtotal, deliveryFee, freeFrom }: { subtotal: number; deliveryFee: number; freeFrom: number }) {
+  return (
+    <div>
+      <Group justify="space-between">
+        <Text c="dimmed">Delivery</Text>
+        <Text c={deliveryFee === 0 ? 'teal.7' : undefined} fw={deliveryFee === 0 ? 600 : undefined}>
+          {deliveryFee === 0 ? 'Free' : formatMoney(deliveryFee)}
+        </Text>
+      </Group>
+      {deliveryFee > 0 && (
+        <Text size="xs" c="dimmed">Free delivery from {formatMoney(freeFrom)}: add {formatMoney(freeFrom - subtotal)} more</Text>
+      )}
+    </div>
   )
 }

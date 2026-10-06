@@ -172,6 +172,33 @@ test('a visitor browses the shop and fills a cart without logging in', async ({ 
   await expect(page.getByRole('button', { name: 'Cart, 2 items' })).toBeVisible()
 })
 
+test('a visitor orders with cash on delivery, then tracks the order', async ({ page }) => {
+  // A phone number of its own on each run: one phone may only have 3 orders waiting for a call
+  const phone = `06${String(Date.now()).slice(-8)}`
+  await page.goto('/shop?category=chargers-cables')
+  await page.getByRole('button', { name: 'Add USB-C Cable 1m to the cart' }).click()
+  await page.getByRole('link', { name: 'View cart' }).click()
+  await page.getByRole('link', { name: 'Checkout' }).click()
+
+  await page.getByRole('textbox', { name: 'Full name' }).fill('E2E Visitor')
+  await page.getByRole('textbox', { name: 'Phone' }).fill(phone)
+  await page.getByRole('textbox', { name: 'City' }).fill('Rabat')
+  await page.getByRole('textbox', { name: 'Address' }).fill('1 avenue des Tests')
+  await page.getByRole('button', { name: 'Place order' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Thank you, E2E!' })).toBeVisible()
+  const number = await page.getByText(/^TS-[A-Z0-9]{6}$/).first().innerText()
+  await expect(page).toHaveURL(new RegExp(`/order/${number}$`))
+  await expect(page.getByRole('button', { name: 'Cart, 0 items' })).toBeVisible()
+
+  await page.goto('/track')
+  await page.getByRole('textbox', { name: 'Order number' }).fill(number)
+  await page.getByRole('textbox', { name: 'Phone' }).fill(phone)
+  await page.getByRole('button', { name: 'Show my order' }).click()
+  await expect(page.getByText(`Order ${number}`)).toBeVisible()
+  await expect(page.getByText('Received')).toBeVisible()
+})
+
 test('a product hidden by an admin disappears from the shop', async ({ page }) => {
   await logIn(page, admin)
   await showInShop(page, 'Screen Protector', false)
