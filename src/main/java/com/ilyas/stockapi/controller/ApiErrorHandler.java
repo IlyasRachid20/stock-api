@@ -66,6 +66,12 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
         return error(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    // e.g. too many orders from the same address in an hour
+    @ExceptionHandler(com.ilyas.stockapi.exception.TooManyRequestsException.class)
+    public ResponseEntity<Object> handleTooManyRequests(RuntimeException ex) {
+        return error(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+    }
+
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<Object> handleBadRequest(BadRequestException ex) {
         return error(HttpStatus.BAD_REQUEST, ex.getMessage());

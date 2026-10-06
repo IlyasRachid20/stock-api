@@ -4,6 +4,7 @@ import com.ilyas.stockapi.dto.report.CategorySales;
 import com.ilyas.stockapi.dto.report.DailySales;
 import com.ilyas.stockapi.dto.report.SalesSummary;
 import com.ilyas.stockapi.dto.report.TopProduct;
+import com.ilyas.stockapi.entity.SaleStatus;
 import com.ilyas.stockapi.exception.BadRequestException;
 import com.ilyas.stockapi.repository.SaleItemRepository;
 import com.ilyas.stockapi.repository.SaleLine;
@@ -27,7 +28,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Sales reports for a date range. Dates are days in the shop's time zone (app.time-zone),
+ * Sales reports for a date range. They count money received: counter sales, and online orders
+ * once delivered (cash on delivery); orders still on their way or cancelled are left out.
+ * Dates are days in the shop's time zone (app.time-zone),
  * so a sale at 23:30 UTC counts on the next day in Morocco (UTC+1).
  * Each report loads the sold lines with one query and adds them up in Java.
  */
@@ -134,7 +137,8 @@ public class ReportService {
     private List<SaleLine> lines(DateRange range) {
         return saleItemRepository.findLines(
                 range.from().atStartOfDay(zone).toInstant(),
-                range.to().plusDays(1).atStartOfDay(zone).toInstant());
+                range.to().plusDays(1).atStartOfDay(zone).toInstant(),
+                SaleStatus.PAID);
     }
 
     private static long itemsSold(List<SaleLine> lines) {

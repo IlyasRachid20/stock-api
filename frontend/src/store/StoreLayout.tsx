@@ -133,6 +133,7 @@ function StoreFooter() {
             <Text fw={700} size="sm">Help</Text>
             <Group gap={6}><IconCash size={16} color="var(--mantine-color-dimmed)" /><Text size="sm" c="dimmed">Cash on delivery</Text></Group>
             <Group gap={6}><IconMail size={16} color="var(--mantine-color-dimmed)" /><Text size="sm" c="dimmed">{SHOP.email}</Text></Group>
+            <Anchor component={Link} to="/track" size="sm" c="dimmed">Track an order</Anchor>
             <Anchor component={Link} to="/admin" size="sm" c="dimmed">Staff login</Anchor>
           </Stack>
         </SimpleGrid>

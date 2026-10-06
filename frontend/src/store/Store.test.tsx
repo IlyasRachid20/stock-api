@@ -127,6 +127,88 @@ describe('online shop', () => {
     expect(screen.queryByText('No longer available')).not.toBeInTheDocument()
   })
 
+  it('places an order paid cash on delivery, shows the confirmation and empties the cart', async () => {
+    localStorage.setItem(CART_KEY, JSON.stringify([
+      { productId: 8, quantity: 2, name: 'Phone Case', slug: 'phone-case', price: 129, imageUrl: null, maxQuantity: 2 },
+    ]))
+    const order = {
+      orderNumber: 'TS-7K3F9Q', status: 'NEW', placedAt: '2026-10-06T10:00:00Z',
+      items: [{ productId: 8, name: 'Phone Case', quantity: 2, unitPrice: 129, lineTotal: 258 }],
+      subtotal: 258, deliveryFee: 30, total: 288,
+      delivery: { name: 'Sara El Idrissi', phone: '+212612345678', city: 'Casablanca', address: '12 rue des Fleurs', note: null },
+      history: [{ status: 'NEW', at: '2026-10-06T10:00:00Z' }],
+    }
+    const calls = mockApi({
+      ...shopApi,
+      'GET /api/shop/info': [200, { currency: 'MAD', deliveryFee: 30, freeDeliveryFrom: 500 }],
+      'POST /api/shop/orders': [201, order],
+    })
+    const { router } = renderApp('/checkout')
+
+    // MAD 258 of products: delivery is paid, and the page says how much more makes it free
+    expect(await screen.findByText(/add MAD.242\.00 more/)).toBeInTheDocument()
+    expect(screen.getByText(/MAD.288\.00/)).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Full name'), 'Sara El Idrissi')
+    await userEvent.type(screen.getByLabelText(/^Phone/), '06 12 34 56 78')
+    await userEvent.type(screen.getByLabelText('City'), 'Casablanca')
+    await userEvent.type(screen.getByLabelText('Address'), '12 rue des Fleurs')
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    expect(await screen.findByRole('heading', { name: 'Thank you, Sara!' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/order/TS-7K3F9Q')
+    expect(savedCart()).toEqual([])
+    // Only product ids and quantities are sent: prices come from the database
+    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({
+      name: 'Sara El Idrissi', phone: '06 12 34 56 78', city: 'Casablanca', address: '12 rue des Fleurs', note: '',
+      items: [{ productId: 8, quantity: 2 }],
+    })
+  })
+
+  it('keeps the cart and explains why when an order is refused', async () => {
+    localStorage.setItem(CART_KEY, JSON.stringify([
+      { productId: 8, quantity: 2, name: 'Phone Case', slug: 'phone-case', price: 129, imageUrl: null, maxQuantity: 2 },
+    ]))
+    mockApi({
+      ...shopApi,
+      'GET /api/shop/info': [200, { currency: 'MAD', deliveryFee: 30, freeDeliveryFrom: 500 }],
+      'POST /api/shop/orders': [409, { error: 'Not enough stock for Phone Case: lower the quantity or remove it from your cart' }],
+    })
+    renderApp('/checkout')
+
+    await userEvent.type(await screen.findByLabelText('Full name'), 'Sara')
+    await userEvent.type(screen.getByLabelText(/^Phone/), '0612345678')
+    await userEvent.type(screen.getByLabelText('City'), 'Rabat')
+    await userEvent.type(screen.getByLabelText('Address'), '1 avenue X')
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    expect(await screen.findByText('Not enough stock for Phone Case: lower the quantity or remove it from your cart')).toBeInTheDocument()
+    expect(savedCart()).toHaveLength(1)
+  })
+
+  it('tracks an order with its number and the phone used', async () => {
+    const calls = mockApi({
+      ...shopApi,
+      'POST /api/shop/orders/track': [200, {
+        orderNumber: 'TS-7K3F9Q', status: 'SHIPPED', placedAt: '2026-10-06T10:00:00Z',
+        items: [{ productId: 8, name: 'Phone Case', quantity: 1, unitPrice: 129, lineTotal: 129 }],
+        subtotal: 129, deliveryFee: 30, total: 159,
+        delivery: { name: 'Sara', phone: '+212612345678', city: 'Rabat', address: '1 avenue X', note: null },
+        history: [{ status: 'NEW', at: '2026-10-06T10:00:00Z' }, { status: 'CONFIRMED', at: '2026-10-06T11:00:00Z' },
+          { status: 'SHIPPED', at: '2026-10-07T09:00:00Z' }],
+      }],
+    })
+    // Opened from a saved link: the order isn't shown before the phone is given
+    renderApp('/order/TS-7K3F9Q')
+
+    expect(await screen.findByLabelText('Order number')).toHaveValue('TS-7K3F9Q')
+    await userEvent.type(screen.getByLabelText('Phone'), '0612345678')
+    await userEvent.click(screen.getByRole('button', { name: 'Show my order' }))
+
+    expect(await screen.findByText('On its way')).toBeInTheDocument()
+    expect(screen.getByText(/MAD.159\.00/)).toBeInTheDocument()
+    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ orderNumber: 'TS-7K3F9Q', phone: '0612345678' })
+  })
+
   it('shows a not-found page for unknown addresses', async () => {
     mockApi(shopApi)
     renderApp('/nothing-here')

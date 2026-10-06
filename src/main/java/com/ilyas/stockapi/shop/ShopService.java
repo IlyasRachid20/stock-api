@@ -2,6 +2,7 @@ package com.ilyas.stockapi.shop;
 
 import com.ilyas.stockapi.entity.Category;
 import com.ilyas.stockapi.entity.Product;
+import com.ilyas.stockapi.entity.SaleStatus;
 import com.ilyas.stockapi.exception.NotFoundException;
 import com.ilyas.stockapi.repository.CategoryRepository;
 import com.ilyas.stockapi.repository.ProductImageRepository;
@@ -58,7 +59,7 @@ public class ShopService {
 
         // A few extra ids, since some best sellers may be hidden from the shop now
         List<Long> bestIds = saleItemRepository.findBestSellingProductIds(
-                now.minus(BEST_SELLER_PERIOD), PageRequest.of(0, HOME_LIST_SIZE * 2));
+                now.minus(BEST_SELLER_PERIOD), SaleStatus.PAID, PageRequest.of(0, HOME_LIST_SIZE * 2));
         Map<Long, Product> byId = productRepository.findAllById(bestIds).stream()
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
         List<ShopProduct> bestSellers = bestIds.stream()
