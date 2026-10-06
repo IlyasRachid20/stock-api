@@ -1,4 +1,4 @@
-import { Button, Group, Modal, NumberInput, Select, Stack, Table, Text, TextInput } from '@mantine/core'
+import { Button, Group, Modal, NumberInput, Select, Stack, Table, Text, Textarea, TextInput } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCategories } from '../api/categories'
@@ -22,6 +22,7 @@ export function ProductFormModal({ opened, onClose, product }: ModalProps & { pr
     initialValues: {
       name: product?.name ?? '',
       categoryId: product?.category ? String(product.category.id) : (null as string | null),
+      description: product?.description ?? '',
       price: product?.price ?? ('' as number | string),
       quantity: 0 as number | string,
       minQuantity: product?.minQuantity ?? (0 as number | string),
@@ -39,6 +40,7 @@ export function ProductFormModal({ opened, onClose, product }: ModalProps & { pr
         price: Number(values.price),
         minQuantity: Number(values.minQuantity) || 0,
         categoryId: values.categoryId ? Number(values.categoryId) : null,
+        description: values.description.trim() || null,
       }
       return product
         ? api<Product>(`/api/products/${product.id}`, { method: 'PUT', body })
@@ -64,6 +66,8 @@ export function ProductFormModal({ opened, onClose, product }: ModalProps & { pr
             data={(categories.data ?? []).map((c) => ({ value: String(c.id), label: c.name }))}
             {...form.getInputProps('categoryId')}
           />
+          <Textarea label="Description (optional)" placeholder="What the customer should know, for the online shop"
+            rows={3} maxLength={2000} {...form.getInputProps('description')} />
           <NumberInput label="Price (MAD)" min={0} decimalScale={2} fixedDecimalScale {...form.getInputProps('price')} />
           {!product && <NumberInput label="Initial stock" min={0} allowDecimal={false} {...form.getInputProps('quantity')} />}
           <NumberInput label="Minimum stock (low-stock alert)" min={0} allowDecimal={false} {...form.getInputProps('minQuantity')} />

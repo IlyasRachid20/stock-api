@@ -12,6 +12,8 @@ import com.ilyas.stockapi.dto.CategoryResponse;
 import com.ilyas.stockapi.repository.AppUserRepository;
 import com.ilyas.stockapi.repository.CategoryRepository;
 import com.ilyas.stockapi.repository.PriceChangeRepository;
+import com.ilyas.stockapi.repository.ProductImageFileRepository;
+import com.ilyas.stockapi.repository.ProductImageRepository;
 import com.ilyas.stockapi.repository.CustomerRepository;
 import com.ilyas.stockapi.repository.ProductRepository;
 import com.ilyas.stockapi.repository.SaleItemRepository;
@@ -68,6 +70,12 @@ class DemoDataTests {
 	@Autowired
 	private PriceChangeRepository priceChangeRepository;
 
+	@Autowired
+	private ProductImageRepository imageRepository;
+
+	@Autowired
+	private ProductImageFileRepository imageFileRepository;
+
 	@BeforeAll
 	void loadDemoShopIntoAnEmptyDatabase() throws Exception {
 		deleteShopData();
@@ -85,6 +93,8 @@ class DemoDataTests {
 		saleItemRepository.deleteAll();
 		saleRepository.deleteAll();
 		priceChangeRepository.deleteAll();
+		imageFileRepository.deleteAll();
+		imageRepository.deleteAll();
 		productRepository.deleteAll();
 		categoryRepository.deleteAll();
 		customerRepository.deleteAll();
@@ -126,6 +136,13 @@ class DemoDataTests {
 		assertThat(saleItemRepository.findAll()).filteredOn(item -> item.getProduct().getId().equals(galaxy))
 				.extracting(item -> item.getUnitPrice().toPlainString())
 				.containsOnly("9999.00", "9500.00");
+	}
+
+	@Test
+	void everyDemoProductHasAPictureAndADescription() {
+		assertThat(imageRepository.count()).isEqualTo(8);
+		assertThat(imageRepository.findAll()).allMatch(image -> image.getWidth() == 800 && image.getHeight() == 800);
+		assertThat(productRepository.findAll()).allMatch(product -> product.getDescription() != null);
 	}
 
 	@Test

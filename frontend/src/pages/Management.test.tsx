@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { mockApi, renderApp } from '../test/render'
+import { prepareImage } from '../utils/images'
+
+// jsdom can't decode pictures: the browser-side shrinking is replaced by a pass-through
+vi.mock('../utils/images', () => ({ prepareImage: vi.fn(async (file: File) => file) }))
 
 // Starts the app already logged in, as the AuthProvider would after a login
 function loggedInAs(role: 'ADMIN' | 'CASHIER') {
@@ -19,6 +23,8 @@ const phones = { id: 3, name: 'Phones', productCount: 1 }
 const audio = { id: 4, name: 'Audio', productCount: 0 }
 const phoneInCategory = { ...phone, category: { id: 3, name: 'Phones' } }
 const reducedPhone = { ...phone, previousPrice: 9999 }
+const picture = (id: number) => ({ id, url: `/api/images/${id}`, width: 800, height: 800 })
+const phoneWithPictures = { ...phone, images: [picture(8), picture(9)] }
 
 describe('products', () => {
   it('lets an admin create a product, showing the API validation errors under the fields', async () => {
@@ -38,7 +44,7 @@ describe('products', () => {
 
     expect(await within(dialog).findByText('must be greater than or equal to 0.00')).toBeInTheDocument()
     expect(calls.find((c) => c.method === 'POST')?.body)
-      .toEqual({ name: 'Charger', price: 199, minQuantity: 0, quantity: 0, categoryId: null })
+      .toEqual({ name: 'Charger', price: 199, minQuantity: 0, quantity: 0, categoryId: null, description: null })
   })
 
   it('files a new product in a category', async () => {
@@ -59,7 +65,7 @@ describe('products', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Create' }))
 
     await waitFor(() => expect(calls.find((c) => c.method === 'POST')?.body)
-      .toEqual({ name: 'Redmi Note 15', price: 2899, minQuantity: 0, quantity: 0, categoryId: 3 }))
+      .toEqual({ name: 'Redmi Note 15', price: 2899, minQuantity: 0, quantity: 0, categoryId: 3, description: null }))
   })
 
   it('shows each product category and filters the list by category, in the address too', async () => {
@@ -130,6 +136,46 @@ describe('products', () => {
     expect(await within(dialog).findByText('MAD 9,500.00')).toBeInTheDocument()
     expect(within(dialog).getByText('MAD 9,999.00')).toBeInTheDocument()
     expect(within(dialog).getByText('admin')).toBeInTheDocument()
+  })
+
+  it("shows each product's cover picture next to its name", async () => {
+    loggedInAs('CASHIER')
+    mockApi({ 'GET /api/products': [200, page([phoneWithPictures, cable])], 'GET /api/categories': [200, []] })
+    const { container } = renderApp('/products')
+
+    await screen.findByText('Galaxy S26')
+    expect(container.querySelector('img[src="/api/images/8"]')).toBeInTheDocument()
+    // Only the cover is shown in the list, and a product without pictures gets a placeholder
+    expect(container.querySelector('img[src="/api/images/9"]')).not.toBeInTheDocument()
+    expect(within(screen.getByText('USB-C Cable').closest('tr')!).queryByRole('presentation')).not.toBeInTheDocument()
+  })
+
+  it('lets an admin add pictures, shrunk before sending, and choose the cover', async () => {
+    loggedInAs('ADMIN')
+    const calls = mockApi({
+      'GET /api/products': [200, page([phoneWithPictures])],
+      'GET /api/categories': [200, []],
+      'GET /api/products/1': [200, phoneWithPictures],
+      'POST /api/products/1/images': [201, picture(10)],
+      'PUT /api/products/1/images/9/cover': [200, [picture(9), picture(8)]],
+    })
+    renderApp('/products')
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Actions for Galaxy S26' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Pictures' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByAltText('Picture 1 of Galaxy S26')).toHaveAttribute('src', '/api/images/8')
+    expect(within(dialog).getByText('Cover')).toBeInTheDocument()
+
+    const photo = new File(['photo'], 'photo.png', { type: 'image/png' })
+    await userEvent.upload(dialog.querySelector('input[type="file"]')!, photo)
+    await waitFor(() => expect(calls.some((c) => c.method === 'POST')).toBe(true))
+    expect(prepareImage).toHaveBeenCalledWith(photo)
+    const sent = calls.find((c) => c.method === 'POST')!.body as FormData
+    expect(sent.get('file')).toBeInstanceOf(Blob)
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Use picture 2 as cover' }))
+    await waitFor(() => expect(calls.some((c) => c.method === 'PUT' && c.url === '/api/products/1/images/9/cover')).toBe(true))
   })
 
   it('shows no management actions to a cashier', async () => {

@@ -35,7 +35,8 @@ export function mockApi(routes: Record<string, [number, unknown]>) {
     const url = String(input)
     const method = init?.method ?? 'GET'
     const headers = (init?.headers ?? {}) as Record<string, string>
-    calls.push({ method, url, body: init?.body ? JSON.parse(String(init.body)) : undefined, auth: headers.Authorization ?? null })
+    const sent = init?.body instanceof FormData ? init.body : init?.body ? JSON.parse(String(init.body)) : undefined
+    calls.push({ method, url, body: sent, auth: headers.Authorization ?? null })
     const key = `${method} ${url.split('?')[0]}`
     const [status, body] = routes[key] ?? [404, { error: `No mock for ${key}` }]
     return new Response(status === 204 ? null : JSON.stringify(body), {

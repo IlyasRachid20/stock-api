@@ -63,12 +63,20 @@ class QueryCountTests {
 	@Autowired
 	private com.ilyas.stockapi.repository.PriceChangeRepository priceChangeRepository;
 
+	@Autowired
+	private com.ilyas.stockapi.repository.ProductImageRepository imageRepository;
+
+	@Autowired
+	private com.ilyas.stockapi.repository.ProductImageFileRepository imageFileRepository;
+
 	@AfterEach
 	void cleanUp() {
 		stockMovementRepository.deleteAll();
 		saleItemRepository.deleteAll();
 		saleRepository.deleteAll();
 		priceChangeRepository.deleteAll();
+		imageFileRepository.deleteAll();
+		imageRepository.deleteAll();
 		productRepository.deleteAll();
 		categoryRepository.deleteAll();
 		customerRepository.deleteAll();
@@ -116,8 +124,9 @@ class QueryCountTests {
 				.andExpect(jsonPath("$.content.length()").value(10))
 				.andExpect(jsonPath("$.content[0].category.name").exists());
 
-		// products page + their 5 categories in one batch (+ the total count when needed)
-		assertThat(statistics.getPrepareStatementCount()).isLessThanOrEqualTo(3);
+		// products page + their 5 categories in one batch + their pictures in one batch
+		// (+ the total count when needed); picture bytes are never loaded for a list
+		assertThat(statistics.getPrepareStatementCount()).isLessThanOrEqualTo(4);
 	}
 
 	private ResultActions postJson(String path, String body) throws Exception {

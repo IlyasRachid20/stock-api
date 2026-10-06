@@ -13,15 +13,18 @@ import java.math.BigDecimal;
  * quantity and minQuantity are optional: 0 when creating, unchanged when updating.
  * Changing quantity here is recorded as an ADJUSTMENT; prefer the restock and adjustments endpoints.
  * categoryId is optional: leave it out (or null) for a product without a category.
+ * description is optional too; pictures are added with POST /api/products/{id}/images.
  */
 public record ProductRequest(
         @NotBlank @Size(max = 150) String name,
         @NotNull @DecimalMin("0.00") @Digits(integer = 8, fraction = 2) BigDecimal price,
         @Min(0) Integer quantity,
         @Min(0) Integer minQuantity,
-        Long categoryId) {
+        Long categoryId,
+        @Size(max = 2000) String description) {
 
     public ProductRequest {
         name = (name == null) ? null : name.trim();
+        description = (description == null || description.isBlank()) ? null : description.trim();
     }
 }
