@@ -7,6 +7,7 @@ import java.time.Instant;
 public record SaleLine(
         Long saleId,
         Instant saleDate,
+        com.ilyas.stockapi.entity.SaleChannel channel,
         String customerName,
         Long productId,
         String productName,

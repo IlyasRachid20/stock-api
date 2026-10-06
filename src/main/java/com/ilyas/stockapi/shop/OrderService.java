@@ -70,6 +70,12 @@ public class OrderService {
             throw new TooManyRequestsException("You already have " + waiting
                     + " orders waiting for our call: we'll contact you soon to confirm them");
         }
+        return create(request);
+    }
+
+    // The order itself, without the limits against fake orders (the demo data uses it directly)
+    @Transactional
+    public OrderView create(OrderRequest request) {
 
         // One line per product, with the quantities of repeated lines added up
         Map<Long, Integer> quantities = new TreeMap<>();

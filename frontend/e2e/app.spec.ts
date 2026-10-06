@@ -40,6 +40,34 @@ async function showInShop(page: Page, product: string, shown: boolean) {
   await expect(page.getByRole('dialog')).toHaveCount(0)
 }
 
+// A phone number of its own on each run: one phone may only have 3 orders waiting for a call
+function uniquePhone() {
+  return `06${String(Date.now()).slice(-8)}`
+}
+
+// Orders one product as a visitor (cash on delivery) and returns the order number
+async function placeOrder(page: Page, product: string, category: string, phone: string): Promise<string> {
+  await page.goto(`/shop?category=${category}`)
+  await page.getByRole('button', { name: `Add ${product} to the cart` }).click()
+  await page.getByRole('link', { name: 'View cart' }).click()
+  await page.getByRole('link', { name: 'Checkout' }).click()
+  await page.getByRole('textbox', { name: 'Full name' }).fill('E2E Visitor')
+  await page.getByRole('textbox', { name: 'Phone' }).fill(phone)
+  await page.getByRole('textbox', { name: 'City' }).fill('Rabat')
+  await page.getByRole('textbox', { name: 'Address' }).fill('1 avenue des Tests')
+  await page.getByRole('button', { name: 'Place order' }).click()
+  await expect(page.getByRole('heading', { name: 'Thank you, E2E!' })).toBeVisible()
+  return page.getByText(/^TS-[A-Z0-9]{6}$/).first().innerText()
+}
+
+async function track(page: Page, number: string, phone: string) {
+  await page.goto('/track')
+  await page.getByRole('textbox', { name: 'Order number' }).fill(number)
+  await page.getByRole('textbox', { name: 'Phone' }).fill(phone)
+  await page.getByRole('button', { name: 'Show my order' }).click()
+  await expect(page.getByText(`Order ${number}`)).toBeVisible()
+}
+
 async function pick(page: Page, field: string, option: RegExp) {
   await page.getByRole('combobox', { name: field }).click()
   await page.getByRole('option', { name: option }).click()
@@ -173,30 +201,32 @@ test('a visitor browses the shop and fills a cart without logging in', async ({ 
 })
 
 test('a visitor orders with cash on delivery, then tracks the order', async ({ page }) => {
-  // A phone number of its own on each run: one phone may only have 3 orders waiting for a call
-  const phone = `06${String(Date.now()).slice(-8)}`
-  await page.goto('/shop?category=chargers-cables')
-  await page.getByRole('button', { name: 'Add USB-C Cable 1m to the cart' }).click()
-  await page.getByRole('link', { name: 'View cart' }).click()
-  await page.getByRole('link', { name: 'Checkout' }).click()
-
-  await page.getByRole('textbox', { name: 'Full name' }).fill('E2E Visitor')
-  await page.getByRole('textbox', { name: 'Phone' }).fill(phone)
-  await page.getByRole('textbox', { name: 'City' }).fill('Rabat')
-  await page.getByRole('textbox', { name: 'Address' }).fill('1 avenue des Tests')
-  await page.getByRole('button', { name: 'Place order' }).click()
-
-  await expect(page.getByRole('heading', { name: 'Thank you, E2E!' })).toBeVisible()
-  const number = await page.getByText(/^TS-[A-Z0-9]{6}$/).first().innerText()
+  const phone = uniquePhone()
+  const number = await placeOrder(page, 'USB-C Cable 1m', 'chargers-cables', phone)
   await expect(page).toHaveURL(new RegExp(`/order/${number}$`))
   await expect(page.getByRole('button', { name: 'Cart, 0 items' })).toBeVisible()
 
-  await page.goto('/track')
-  await page.getByRole('textbox', { name: 'Order number' }).fill(number)
-  await page.getByRole('textbox', { name: 'Phone' }).fill(phone)
-  await page.getByRole('button', { name: 'Show my order' }).click()
-  await expect(page.getByText(`Order ${number}`)).toBeVisible()
-  await expect(page.getByText('Received')).toBeVisible()
+  await track(page, number, phone)
+  await expect(page.locator('.mantine-Stepper-step[data-completed]')).toHaveCount(1)
+})
+
+test('the staff confirms, ships and delivers an online order, and the customer sees each step', async ({ page }) => {
+  const phone = uniquePhone()
+  const number = await placeOrder(page, 'Screen Protector', 'protection', phone)
+
+  await logIn(page, cashier)
+  await page.getByRole('link', { name: /Online orders/ }).click()
+  await page.getByPlaceholder('Number, name or phone').fill(number)
+  await page.getByText(number, { exact: true }).click()
+  const panel = page.getByRole('dialog')
+  await panel.getByRole('button', { name: 'Confirm (customer called)' }).click()
+  await panel.getByRole('button', { name: 'Mark as shipped' }).click()
+  await panel.getByRole('button', { name: 'Delivered, cash collected' }).click()
+  await expect(panel.getByRole('button')).toHaveCount(1) // only the drawer's close button is left
+  await expect(panel.getByText('demo').first()).toBeVisible() // the history shows who did it
+
+  await track(page, number, phone)
+  await expect(page.locator('.mantine-Stepper-step[data-completed]')).toHaveCount(4)
 })
 
 test('a product hidden by an admin disappears from the shop', async ({ page }) => {

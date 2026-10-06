@@ -75,7 +75,7 @@ public class SecurityConfig {
                         // Both roles can read everything else
                         .requestMatchers(HttpMethod.GET, "/api/**").hasAnyRole("ADMIN", "CASHIER")
                         // A cashier registers customers and records sales at the till
-                        .requestMatchers(HttpMethod.POST, "/api/customers", "/api/sales", "/api/sale-items")
+                        .requestMatchers(HttpMethod.POST, "/api/customers", "/api/sales", "/api/sale-items", "/api/orders/*/status")
                                 .hasAnyRole("ADMIN", "CASHIER")
                         .requestMatchers(HttpMethod.PUT, "/api/customers/*").hasAnyRole("ADMIN", "CASHIER")
                         // Everything else under /api is for admins: products, prices, stock and every

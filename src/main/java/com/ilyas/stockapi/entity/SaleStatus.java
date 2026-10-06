@@ -20,4 +20,19 @@ public enum SaleStatus {
 
     // Online orders still taking stock and waiting for the shop
     public static final java.util.List<SaleStatus> OPEN = java.util.List.of(NEW, CONFIRMED, SHIPPED);
+
+    // What an online order can become from here: cancelled before it leaves, returned once shipped
+    public java.util.List<SaleStatus> next() {
+        return switch (this) {
+            case NEW -> java.util.List.of(CONFIRMED, CANCELLED);
+            case CONFIRMED -> java.util.List.of(SHIPPED, CANCELLED);
+            case SHIPPED -> java.util.List.of(DELIVERED, RETURNED);
+            default -> java.util.List.of();
+        };
+    }
+
+    // These put the order's products back in stock
+    public boolean returnsStock() {
+        return this == CANCELLED || this == RETURNED;
+    }
 }

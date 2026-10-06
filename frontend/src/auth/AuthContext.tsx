@@ -4,6 +4,10 @@ import { api, configureApi } from '../api/client'
 import type { LoginResponse, Me } from '../api/types'
 import { AuthContext, loadSession, STORAGE_KEY, type AuthValue, type Session } from './useAuth'
 
+// The token is read from the stored session from the very first request: on a page reload, parts of
+// the screen (e.g. the menu's order count) ask the API before the provider's effects have run
+configureApi({ getToken: () => loadSession()?.token ?? null, onUnauthorized: () => {} })
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   const [session, setSession] = useState<Session | null>(() => loadSession())
@@ -14,7 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.clear()
   }, [queryClient])
 
-  // Every API call reads the current token; a 401 on a call made with a token means it expired
+  // A 401 on a call made with a token means it expired: log out
   useEffect(() => {
     configureApi({ getToken: () => loadSession()?.token ?? null, onUnauthorized: logout })
   }, [logout])

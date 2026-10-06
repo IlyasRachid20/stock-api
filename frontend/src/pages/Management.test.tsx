@@ -362,6 +362,80 @@ describe('categories', () => {
   })
 })
 
+describe('online orders', () => {
+  const summary = {
+    id: 21, orderNumber: 'TS-7K3F9Q', status: 'NEW', placedAt: '2026-10-06T19:30:00Z', customerName: 'Imane Alaoui',
+    phone: '+212611223344', city: 'Rabat', itemCount: 2, total: 129.8,
+  }
+  const detail = {
+    id: 21, orderNumber: 'TS-7K3F9Q', status: 'NEW', placedAt: '2026-10-06T19:30:00Z', customerId: 9,
+    delivery: { name: 'Imane Alaoui', phone: '+212611223344', city: 'Rabat', address: '14 avenue Mohammed V', note: 'Call first' },
+    items: [{ id: 5, saleId: 21, product: { id: 2, name: 'USB-C Cable' }, quantity: 2, unitPrice: 49.9, lineTotal: 99.8 }],
+    subtotal: 99.8, deliveryFee: 30, total: 129.8,
+    history: [{ status: 'NEW', note: 'Ordered online', changedBy: 'online shop', changedAt: '2026-10-06T19:30:00Z' }],
+    nextStatuses: ['CONFIRMED', 'CANCELLED'],
+  }
+
+  it('lists the orders to confirm and confirms one after the call', async () => {
+    loggedInAs('CASHIER')
+    const calls = mockApi({
+      'GET /api/orders': [200, page([summary])],
+      'GET /api/orders/counts': [200, { NEW: 1, CONFIRMED: 0, SHIPPED: 0 }],
+      'GET /api/orders/21': [200, detail],
+      'POST /api/orders/21/status': [200, { ...detail, status: 'CONFIRMED', nextStatuses: ['SHIPPED', 'CANCELLED'] }],
+    })
+    renderApp('/admin/orders')
+
+    // The menu says how many orders wait for a call
+    expect(await screen.findByLabelText('1 to confirm')).toBeInTheDocument()
+    await userEvent.click(await screen.findByText('TS-7K3F9Q'))
+    const panel = await screen.findByRole('dialog')
+    expect(within(panel).getByRole('link', { name: /\+212611223344/ })).toHaveAttribute('href', 'tel:+212611223344')
+    expect(within(panel).getByText('Note: Call first')).toBeInTheDocument()
+
+    await userEvent.click(within(panel).getByRole('button', { name: 'Confirm (customer called)' }))
+
+    await waitFor(() => expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ status: 'CONFIRMED', note: null }))
+    expect(calls.some((c) => c.url.startsWith('/api/orders?') && c.url.includes('status=NEW'))).toBe(true)
+    // Every call carries the token, the menu's count included (it's asked for before the page loads)
+    expect(calls.every((c) => c.auth === 'Bearer token-123')).toBe(true)
+  })
+
+  it('cancels an order with a note', async () => {
+    loggedInAs('ADMIN')
+    const calls = mockApi({
+      'GET /api/orders': [200, page([summary])],
+      'GET /api/orders/counts': [200, { NEW: 1 }],
+      'GET /api/orders/21': [200, detail],
+      'POST /api/orders/21/status': [200, { ...detail, status: 'CANCELLED', nextStatuses: [] }],
+    })
+    renderApp('/admin/orders')
+
+    await userEvent.click(await screen.findByText('TS-7K3F9Q'))
+    const panel = await screen.findByRole('dialog')
+    await userEvent.type(within(panel).getByLabelText('Note'), 'Wrong address')
+    await userEvent.click(within(panel).getByRole('button', { name: 'Cancel the order' }))
+
+    await waitFor(() => expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ status: 'CANCELLED', note: 'Wrong address' }))
+  })
+
+  it('marks online orders in the sales list, which are cancelled from the orders page instead', async () => {
+    loggedInAs('ADMIN')
+    const online = { id: 21, customer: { id: 9, name: 'Imane Alaoui' }, saleDate: '2026-10-06T19:30:00Z', items: [], total: 99.8,
+      channel: 'ONLINE', status: 'DELIVERED', orderNumber: 'TS-7K3F9Q' }
+    const counter = { ...online, id: 20, customer: { id: 7, name: 'Ahmed' }, channel: 'STORE', status: 'COMPLETED', orderNumber: null }
+    mockApi({ 'GET /api/sales': [200, page([online, counter])] })
+    renderApp('/admin/sales')
+
+    expect(await screen.findByText('Online · Delivered')).toBeInTheDocument()
+    expect(screen.getByText('Counter')).toBeInTheDocument()
+    await userEvent.click(screen.getByText('Imane Alaoui'))
+    const drawer = await screen.findByRole('dialog')
+    expect(within(drawer).getByText(/handled on the Online orders page/)).toBeInTheDocument()
+    expect(within(drawer).queryByRole('button', { name: 'Cancel this sale' })).not.toBeInTheDocument()
+  })
+})
+
 describe('customers and users', () => {
   it('shows a duplicate email under the email field', async () => {
     loggedInAs('CASHIER')

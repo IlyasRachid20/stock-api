@@ -139,6 +139,14 @@ public class SaleService {
         return item;
     }
 
+    // An online order cancelled or returned: its products go back in stock, its lines stay as a record
+    @Transactional
+    public void putBackInStock(Sale sale, String reason) {
+        saleItemRepository.findBySaleId(sale.getId()).stream()
+                .sorted(Comparator.comparing(item -> item.getProduct().getId()))
+                .forEach(item -> returnToStock(item, reason));
+    }
+
     @Transactional
     public void removeItem(Long itemId) {
         SaleItem item = saleItemRepository.findById(itemId).orElseThrow(NotFoundException::new);
@@ -148,9 +156,12 @@ public class SaleService {
     }
 
     private void returnToStock(SaleItem item) {
+        returnToStock(item, "Sale " + item.getSale().getId() + " item deleted");
+    }
+
+    private void returnToStock(SaleItem item, String reason) {
         Product product = productRepository.findByIdForUpdate(item.getProduct().getId()).orElseThrow();
         product.setQuantity(product.getQuantity() + item.getQuantity());
-        stockMovements.record(product, MovementType.SALE_CANCELLED, item.getQuantity(),
-                "Sale " + item.getSale().getId() + " item deleted", item.getId());
+        stockMovements.record(product, MovementType.SALE_CANCELLED, item.getQuantity(), reason, item.getId());
     }
 }

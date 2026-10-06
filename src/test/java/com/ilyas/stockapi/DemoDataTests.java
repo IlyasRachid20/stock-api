@@ -68,6 +68,9 @@ class DemoDataTests {
 	private CategoryRepository categoryRepository;
 
 	@Autowired
+	private com.ilyas.stockapi.repository.OrderStatusChangeRepository orderStatusChangeRepository;
+
+	@Autowired
 	private PriceChangeRepository priceChangeRepository;
 
 	@Autowired
@@ -89,6 +92,7 @@ class DemoDataTests {
 	}
 
 	private void deleteShopData() {
+		orderStatusChangeRepository.deleteAll();
 		stockMovementRepository.deleteAll();
 		saleItemRepository.deleteAll();
 		saleRepository.deleteAll();
@@ -143,6 +147,21 @@ class DemoDataTests {
 		assertThat(imageRepository.count()).isEqualTo(8);
 		assertThat(imageRepository.findAll()).allMatch(image -> image.getWidth() == 800 && image.getHeight() == 800);
 		assertThat(productRepository.findAll()).allMatch(product -> product.getDescription() != null);
+	}
+
+	@Test
+	void theDemoShopHasOnlineOrdersAtEveryStep() {
+		var orders = saleRepository.findAll().stream()
+				.filter(sale -> sale.getChannel() == com.ilyas.stockapi.entity.SaleChannel.ONLINE).toList();
+		assertThat(orders).hasSizeBetween(8, 14);
+		assertThat(orders).extracting(sale -> sale.getStatus().name())
+				.contains("NEW", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED");
+		// Today's orders wait for a call; none is left waiting long enough to be cancelled automatically
+		assertThat(orders).filteredOn(sale -> sale.getStatus() == com.ilyas.stockapi.entity.SaleStatus.NEW)
+				.allMatch(sale -> sale.getSaleDate().isAfter(java.time.Instant.now().minus(java.time.Duration.ofHours(30))));
+		// Placed in the shop, handled by the staff
+		assertThat(orderStatusChangeRepository.findAll()).anyMatch(change -> change.getChangedBy().equals("online shop"))
+				.anyMatch(change -> change.getChangedBy().equals("admin"));
 	}
 
 	@Test

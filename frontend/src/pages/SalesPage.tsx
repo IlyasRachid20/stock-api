@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Drawer, Group, Pagination, Stack, Table, Text, Title } from '@mantine/core'
+import { Badge, Button, Drawer, Group, Pagination, Stack, Table, Text, Title } from '@mantine/core'
 import { IconPlus } from '@tabler/icons-react'
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
@@ -10,6 +10,7 @@ import { ConfirmModal } from '../components/ConfirmModal'
 import { QueryState } from '../components/QueryState'
 import { formatDateTime, formatMoney } from '../utils/format'
 import { notifyError, notifySuccess } from '../utils/notify'
+import { ORDER_STATUS } from '../utils/orderStatus'
 import { useRefreshStock } from '../utils/refresh'
 
 export function SalesPage() {
@@ -55,6 +56,7 @@ export function SalesPage() {
                   <Table.Th>Customer</Table.Th>
                   <Table.Th ta="right">Items</Table.Th>
                   <Table.Th ta="right">Total</Table.Th>
+                  <Table.Th>Where</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -65,6 +67,7 @@ export function SalesPage() {
                     <Table.Td>{s.customer.name}</Table.Td>
                     <Table.Td ta="right">{s.items.reduce((n, i) => n + i.quantity, 0)}</Table.Td>
                     <Table.Td ta="right" fw={600}>{formatMoney(s.total)}</Table.Td>
+                    <Table.Td><SaleBadge sale={s} /></Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
@@ -90,7 +93,10 @@ export function SalesPage() {
               </Table.Tbody>
             </Table>
             <Text fw={700} ta="right">Total {formatMoney(selected.total)}</Text>
-            {isAdmin && (
+            {selected.channel === 'ONLINE' && (
+              <Text size="sm" c="dimmed">Online order {selected.orderNumber}: it's handled on the Online orders page.</Text>
+            )}
+            {isAdmin && selected.channel === 'STORE' && (
               <Button color="red" variant="light" onClick={() => setConfirmCancel(true)}>Cancel this sale</Button>
             )}
           </Stack>
@@ -105,4 +111,11 @@ export function SalesPage() {
       )}
     </Stack>
   )
+}
+
+// Counter sale, or online order with its status
+function SaleBadge({ sale }: { sale: Sale }) {
+  if (sale.channel === 'STORE') return <Badge variant="light" color="gray">Counter</Badge>
+  const status = ORDER_STATUS[sale.status as keyof typeof ORDER_STATUS]
+  return <Badge variant="light" color={status.color}>Online · {status.label}</Badge>
 }

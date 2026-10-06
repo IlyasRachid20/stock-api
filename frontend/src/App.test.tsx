@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { mockApi, renderApp } from './test/render'
@@ -12,7 +12,7 @@ const shopApi = (roles: string[]) => ({
     content: [{ id: 8, name: 'Phone Case', price: 129, quantity: 0, minQuantity: 5, lowStock: true }],
     page: { size: 10, number: 0, totalElements: 1, totalPages: 1 },
   }] as [number, unknown],
-  'GET /api/reports/summary': [200, { from: '2026-09-01', to: '2026-09-30', salesCount: 4, itemsSold: 12, revenue: 26063.1, averageSale: 6515.78 }] as [number, unknown],
+  'GET /api/reports/summary': [200, { from: '2026-09-01', to: '2026-09-30', salesCount: 4, itemsSold: 12, revenue: 26063.1, averageSale: 6515.78, onlineSalesCount: 1, onlineRevenue: 499 }] as [number, unknown],
   'GET /api/reports/sales-by-day': [200, [{ date: '2026-09-30', salesCount: 4, itemsSold: 12, revenue: 26063.1 }]] as [number, unknown],
   'GET /api/reports/top-products': [200, [{ productId: 6, name: 'USB-C Cable 1m', quantitySold: 4, revenue: 199.6 }]] as [number, unknown],
   'GET /api/reports/sales-by-category': [200, [
@@ -29,6 +29,12 @@ async function logIn(username: string, password: string) {
 }
 
 describe('app', () => {
+  // The dashboard page brings the charts library: loading it the first time can take more than the
+  // 10 s a test waits for an element on a busy machine, so it's loaded once before the tests start
+  beforeAll(async () => {
+    await import('./pages/DashboardPage')
+  }, 60_000)
+
   it('sends visitors without a session to the login page', async () => {
     mockApi({})
     renderApp('/admin/products')
@@ -49,6 +55,7 @@ describe('app', () => {
     // Each category's share of the revenue
     expect(await screen.findByRole('progressbar', { name: 'Phones: 96% of revenue' })).toBeInTheDocument()
     expect(screen.getByRole('progressbar', { name: 'Uncategorized: 4% of revenue' })).toBeInTheDocument()
+    expect(screen.getByText(/Online: MAD.499\.00 \(1 orders delivered\)/)).toBeInTheDocument()
     expect(screen.getByText('Admin')).toBeInTheDocument()
     // After login, every call carries the token
     expect(calls.filter((c) => c.url.startsWith('/api/reports')).every((c) => c.auth === 'Bearer token-123')).toBe(true)

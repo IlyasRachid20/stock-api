@@ -25,7 +25,7 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, Long> {
     List<Long> findBestSellingProductIds(Instant since, Collection<SaleStatus> statuses, Pageable limit);
 
     // Every sold line between two instants (from included, to excluded), in one query for the reports
-    @Query("select new com.ilyas.stockapi.repository.SaleLine(s.id, s.saleDate, c.name, p.id, p.name, cat.id, cat.name,"
+    @Query("select new com.ilyas.stockapi.repository.SaleLine(s.id, s.saleDate, s.channel, c.name, p.id, p.name, cat.id, cat.name,"
             + " i.quantity, i.unitPrice)"
             + " from SaleItem i join i.sale s join s.customer c join i.product p left join p.category cat"
             + " where s.saleDate >= :from and s.saleDate < :to and s.status in :statuses order by s.saleDate, s.id, i.id")

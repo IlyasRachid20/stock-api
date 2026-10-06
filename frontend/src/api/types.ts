@@ -77,12 +77,46 @@ export interface SaleItem {
   lineTotal: number
 }
 
+// A counter sale is STORE / COMPLETED; an online order is ONLINE and moves through OrderStatus
+export type OrderStatus = 'NEW' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'RETURNED'
+
 export interface Sale {
   id: number
   customer: Summary
   saleDate: string
   items: SaleItem[]
   total: number
+  channel: 'STORE' | 'ONLINE'
+  status: 'COMPLETED' | OrderStatus
+  orderNumber: string | null
+}
+
+export interface OrderSummary {
+  id: number
+  orderNumber: string
+  status: OrderStatus
+  placedAt: string
+  customerName: string
+  phone: string
+  city: string
+  itemCount: number
+  total: number
+}
+
+export interface OrderDetail {
+  id: number
+  orderNumber: string
+  status: OrderStatus
+  placedAt: string
+  customerId: number
+  delivery: { name: string; phone: string; city: string; address: string; note: string | null }
+  items: SaleItem[]
+  subtotal: number
+  deliveryFee: number
+  total: number
+  history: { status: OrderStatus; note: string | null; changedBy: string; changedAt: string }[]
+  // The steps it can move to (the buttons to show)
+  nextStatuses: OrderStatus[]
 }
 
 export interface User {
@@ -113,6 +147,9 @@ export interface SalesSummary {
   itemsSold: number
   revenue: number
   averageSale: number
+  // The part of the totals from delivered online orders
+  onlineSalesCount: number
+  onlineRevenue: number
 }
 
 export interface DailySales {

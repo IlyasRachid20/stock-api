@@ -3,9 +3,8 @@ import { afterEach, vi } from 'vitest'
 import { cleanup, configure } from '@testing-library/react'
 
 // Pages are loaded on first use (see router.tsx); the dashboard brings the charts library,
-// which takes more than the default 1 s to load the first time in the test environment, and
-// longer on a busy machine (2 such timeouts were seen locally at 5 s, never in CI). Waiting
-// longer costs nothing when the element is there.
+// which takes more than the default 1 s to load the first time in the test environment
+// (App.test.tsx also loads it before its tests). Waiting longer costs nothing when the element is there.
 configure({ asyncUtilTimeout: 10_000 })
 
 afterEach(() => {

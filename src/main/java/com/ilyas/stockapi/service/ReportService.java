@@ -4,6 +4,7 @@ import com.ilyas.stockapi.dto.report.CategorySales;
 import com.ilyas.stockapi.dto.report.DailySales;
 import com.ilyas.stockapi.dto.report.SalesSummary;
 import com.ilyas.stockapi.dto.report.TopProduct;
+import com.ilyas.stockapi.entity.SaleChannel;
 import com.ilyas.stockapi.entity.SaleStatus;
 import com.ilyas.stockapi.exception.BadRequestException;
 import com.ilyas.stockapi.repository.SaleItemRepository;
@@ -57,7 +58,9 @@ public class ReportService {
         BigDecimal revenue = total(lines);
         BigDecimal average = salesCount == 0 ? money(BigDecimal.ZERO)
                 : revenue.divide(BigDecimal.valueOf(salesCount), 2, RoundingMode.HALF_UP);
-        return new SalesSummary(range.from(), range.to(), salesCount, itemsSold(lines), revenue, average);
+        List<SaleLine> online = lines.stream().filter(line -> line.channel() == SaleChannel.ONLINE).toList();
+        return new SalesSummary(range.from(), range.to(), salesCount, itemsSold(lines), revenue, average,
+                online.stream().map(SaleLine::saleId).distinct().count(), total(online));
     }
 
     public List<DailySales> salesByDay(LocalDate from, LocalDate to) {
@@ -106,7 +109,7 @@ public class ReportService {
 
     // One row per sold line; opens fine in Excel and Google Sheets
     public void writeSalesCsv(LocalDate from, LocalDate to, Writer out) throws IOException {
-        out.write("date,sale_id,customer,product,category,quantity,unit_price,line_total\n");
+        out.write("date,sale_id,customer,product,category,quantity,unit_price,line_total,channel\n");
         for (SaleLine line : lines(range(from, to))) {
             out.write(String.join(",",
                     CSV_DATE_TIME.format(line.saleDate().atZone(zone)),
@@ -116,7 +119,8 @@ public class ReportService {
                     csv(line.categoryName()),
                     line.quantity().toString(),
                     line.unitPrice().toPlainString(),
-                    line.lineTotal().toPlainString()));
+                    line.lineTotal().toPlainString(),
+                    line.channel().name()));
             out.write("\n");
         }
     }

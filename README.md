@@ -29,7 +29,7 @@ This project is a complete, production-style answer to that problem:
 - **An online shop** where visitors browse categories, deals and best sellers, see honest availability ("only 2 left") and fill a cart kept in their browser, on the same stock as the counter.
 - **A React back-office** that a cashier can use all day (new sale in a few clicks, live total, stock and customer search) and that gives the owner the numbers: revenue per day, best sellers, low stock, CSV export.
 - **Security built in:** JWT login, hashed passwords, and roles that decide what each person can see and do (cashiers never see revenue).
-- **Built to be maintained:** versioned database migrations, a clean API contract, consistent errors, Docker, and **278 automated tests** on every change, from unit tests up to a real browser making a sale in the running app.
+- **Built to be maintained:** versioned database migrations, a clean API contract, consistent errors, Docker, and **292 automated tests** on every change, from unit tests up to a real browser making a sale in the running app.
 
 Every feature was added through a reviewed pull request with its tests, and bugs found along the way (lost stock updates, N+1 queries, time-zone errors) are covered by tests so they can't come back.
 
@@ -41,6 +41,7 @@ Every feature was added through a reviewed pull request with its tests, and bugs
 - **Categories:** products are filed in categories (Phones, Audio…), the product list filters by category, and the reports show the revenue of each category. A category can only be deleted once it's empty.
 - **Price history and honest reductions:** every price change is recorded with who made it and when. After a price drop, the old price is shown struck through for 30 days, and it's the lowest price of the 30 days before the drop (the European rule), so raising a price just before a "promotion" can't fake a reduction.
 - **Online orders, paid cash on delivery:** the checkout sends only product ids and quantities (prices always come from the database), the order takes its stock at once through the same locked sale engine as the counter, and the customer follows it with the order number and their phone. Delivery is free from MAD 500 (settings). Against fake orders: 5 orders an hour per connection, 3 orders waiting for confirmation per phone, and the exact stock is never revealed. An order only counts as revenue once delivered.
+- **Orders handled by the staff:** the cashier calls to confirm, then ships; the order moves NEW → CONFIRMED → SHIPPED → DELIVERED and can't skip a step. Cancelling (before shipping) or a parcel refused at the door puts the products back in stock while the order and its lines stay, with who did what and why. The order row is locked during a change, so two clicks can't put the stock back twice. Orders nobody confirmed within 48 hours are cancelled automatically every hour, freeing their stock.
 - **Public catalog for the online shop:** `/api/shop/...` needs no login and only shows published products, with "only 3 left" instead of the exact stock (no minimum levels, no price history). A product hidden from the shop is still sold at the counter.
 - **Product pictures:** up to 6 per product, the first one is the cover. The browser shrinks a photo before sending it; the server checks it (size read from the header before decoding), shrinks it to 1200 px and saves it again as a JPEG, so hidden data such as a phone photo's GPS position is never kept. Pictures live in PostgreSQL (a free host's disk is wiped on restart) and are cached by browsers for a year.
 - **Sales reports (admin):** totals, day-by-day sales with no gaps (ready for charts), best sellers, revenue by category and a CSV export, counted in the shop's own time zone.
@@ -54,7 +55,7 @@ Every feature was added through a reviewed pull request with its tests, and bugs
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **217 backend tests, 51 frontend tests and 10 end-to-end tests** run on every pull request with GitHub Actions: the backend on H2 **and on a real PostgreSQL**, and the end-to-end tests in a **real Chrome** against the whole app running in Docker.
+- **227 backend tests, 54 frontend tests and 11 end-to-end tests** run on every pull request with GitHub Actions: the backend on H2 **and on a real PostgreSQL**, and the end-to-end tests in a **real Chrome** against the whole app running in Docker.
 
 ## Tech stack
 
@@ -138,6 +139,7 @@ erDiagram
 | Reports (`ADMIN` only) | `GET /api/reports/summary` · `GET /api/reports/sales-by-day` · `GET /api/reports/top-products` · `GET /api/reports/sales-by-category` · `GET /api/reports/sales.csv` (all take `from`/`to`, default the last 30 days) |
 | Sales | `GET/POST /api/sales` · `GET/DELETE /api/sales/{id}` |
 | Sale items | `GET/POST /api/sale-items` · `GET/DELETE /api/sale-items/{id}` |
+| Online orders (staff) | `GET /api/orders?status=&search=` · `GET /api/orders/counts` · `GET /api/orders/{id}` · `POST /api/orders/{id}/status` |
 | Online shop (public, no login) | `GET /api/shop/home` · `GET /api/shop/categories` · `GET /api/shop/products?category=&search=&ids=` · `GET /api/shop/products/{id}` · `GET /api/shop/info` (delivery fee) · `POST /api/shop/orders` · `POST /api/shop/orders/track` |
 | Auth | `POST /api/auth/login` (public) · `GET /api/auth/me` |
 | Users (`ADMIN` only) | `GET/POST /api/users` · `DELETE /api/users/{id}` |
@@ -173,6 +175,7 @@ On first start, when there are no users, an `admin` account is created with the 
 | Register and update customers | yes | yes |
 | Create sales and add items | yes | yes |
 | Create, update or delete products (prices, stock) | yes | no |
+| Handle online orders (confirm, ship, deliver, cancel) | yes | yes |
 | Read categories | yes | yes |
 | Add or delete product pictures | yes | no |
 | Create, rename or delete categories | yes | no |
@@ -339,9 +342,10 @@ The `frontend/` folder holds one React + TypeScript app with two parts.
 **The back-office** at `/admin`, for the staff (login):
 
 - **Login** with the API's JWT; the session ends when the token expires.
-- **Dashboard:** revenue, sales, items sold and average sale for 7, 30 or 90 days, a revenue-per-day chart, best sellers, revenue by category, CSV export (admins), and the low-stock list (everyone).
+- **Dashboard:** revenue, sales, items sold and average sale for 7, 30 or 90 days, a revenue-per-day chart, the online part of the revenue, best sellers, revenue by category, CSV export (admins), and the low-stock list (everyone).
 - **New sale:** pick a customer, add products (with price and stock shown), adjust quantities, see the total, complete the sale in one request.
-- **Sales:** list with totals, details of each sale, cancelling a sale puts its items back in stock (admins).
+- **Sales:** list with totals, where each sale was made (counter or online, with the order's status), details of each sale, cancelling a counter sale puts its items back in stock (admins).
+- **Online orders:** tabs by step (to confirm, confirmed, shipped, delivered, cancelled, returned) with counts, search by number, name or phone; each order shows the address, a phone link, the lines, the history (who, when, note) and buttons for the next steps. The menu shows how many orders wait for a call.
 - **Products:** pictures, "Show in the online shop" switch, search, filter by category (kept in the address, so it can be bookmarked), pagination, badges, recent price drops struck through with the reduction (also in the new sale screen), price history; admins add pictures (shrunk in the browser first) and choose the cover; admins create, edit, restock, correct stock and delete.
 - **Categories** (admins): add, rename and delete categories; each one links to its products.
 - **Customers:** search, create and edit (everyone), delete (admins).
@@ -362,7 +366,7 @@ npm run dev
 
 Open http://localhost:5173/admin. Vite forwards `/api` to the API, so no CORS setup is needed. Checks: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
 
-**End-to-end tests** (`frontend/e2e`, Playwright) drive a real browser through the whole app started with Docker Compose in demo mode: a visitor goes from a category to a product and fills a cart, a visitor orders with cash on delivery and tracks the order, a product hidden by an admin leaves the shop, a cashier makes a sale and the stock goes down, a cashier can't see revenue or user management, an admin restocks a product, the demo products are filed in categories, recent price drops are struck through, demo pictures load and an admin adds and deletes one, pages survive a refresh and logout ends the session. They use the Chrome or Edge already installed:
+**End-to-end tests** (`frontend/e2e`, Playwright) drive a real browser through the whole app started with Docker Compose in demo mode: a visitor goes from a category to a product and fills a cart, a visitor orders with cash on delivery and tracks the order, a cashier confirms, ships and delivers an order and the customer sees each step, a product hidden by an admin leaves the shop, a cashier makes a sale and the stock goes down, a cashier can't see revenue or user management, an admin restocks a product, the demo products are filed in categories, recent price drops are struck through, demo pictures load and an admin adds and deletes one, pages survive a refresh and logout ends the session. They use the Chrome or Edge already installed:
 
 ```bash
 BASE_URL=http://localhost:8080 E2E_BROWSER=msedge E2E_ADMIN_PASSWORD=... E2E_CASHIER_PASSWORD=... npm run e2e
@@ -415,7 +419,8 @@ src/main/resources/db/migration
 - [x] Product pictures
 - [x] Online shop: home, categories, product pages, cart
 - [x] Online checkout with cash on delivery, order tracking
-- [ ] Orders in the back-office: confirm, ship, deliver, cancel
+- [x] Orders in the back-office: confirm, ship, deliver, cancel, automatic cancellation after 48 hours
+- [ ] Security: login attempt limit, access ends when a user is deleted, change password
 
 ## Author
 
