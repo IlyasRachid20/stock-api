@@ -11,6 +11,7 @@ import com.ilyas.stockapi.demo.DemoDataLoader;
 import com.ilyas.stockapi.dto.CategoryResponse;
 import com.ilyas.stockapi.repository.AppUserRepository;
 import com.ilyas.stockapi.repository.CategoryRepository;
+import com.ilyas.stockapi.repository.PriceChangeRepository;
 import com.ilyas.stockapi.repository.CustomerRepository;
 import com.ilyas.stockapi.repository.ProductRepository;
 import com.ilyas.stockapi.repository.SaleItemRepository;
@@ -64,6 +65,9 @@ class DemoDataTests {
 	@Autowired
 	private CategoryRepository categoryRepository;
 
+	@Autowired
+	private PriceChangeRepository priceChangeRepository;
+
 	@BeforeAll
 	void loadDemoShopIntoAnEmptyDatabase() throws Exception {
 		deleteShopData();
@@ -80,6 +84,7 @@ class DemoDataTests {
 		stockMovementRepository.deleteAll();
 		saleItemRepository.deleteAll();
 		saleRepository.deleteAll();
+		priceChangeRepository.deleteAll();
 		productRepository.deleteAll();
 		categoryRepository.deleteAll();
 		customerRepository.deleteAll();
@@ -104,6 +109,23 @@ class DemoDataTests {
 						org.assertj.core.groups.Tuple.tuple("Chargers & cables", 2L),
 						org.assertj.core.groups.Tuple.tuple("Phones", 3L),
 						org.assertj.core.groups.Tuple.tuple("Protection", 2L));
+	}
+
+	@Test
+	void twoDemoProductsShowAPriceReductionAndOneARise() {
+		java.time.Instant now = java.time.Instant.now();
+		java.util.Map<String, java.math.BigDecimal> previous = new java.util.HashMap<>();
+		productRepository.findAll().forEach(p -> previous.put(p.getName(), p.getPreviousPriceAt(now)));
+
+		assertThat(previous.get("Galaxy S26")).isEqualByComparingTo("9999.00");
+		assertThat(previous.get("Phone Case")).isEqualByComparingTo("149.00");
+		assertThat(previous.get("AirPods Pro 3")).isNull();
+		assertThat(priceChangeRepository.count()).isEqualTo(3);
+		// Sales keep the price of their day: the phone sold at 9999 before the drop, at 9500 after
+		Long galaxy = productRepository.findAll().stream().filter(p -> p.getName().equals("Galaxy S26")).findFirst().orElseThrow().getId();
+		assertThat(saleItemRepository.findAll()).filteredOn(item -> item.getProduct().getId().equals(galaxy))
+				.extracting(item -> item.getUnitPrice().toPlainString())
+				.containsOnly("9999.00", "9500.00");
 	}
 
 	@Test

@@ -6,6 +6,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { api } from '../api/client'
 import type { Customer, Page, Product, Sale } from '../api/types'
+import { Price } from '../components/Price'
 import { formatMoney } from '../utils/format'
 import { messageOf, notifySuccess } from '../utils/notify'
 import { useRefreshStock } from '../utils/refresh'
@@ -80,7 +81,8 @@ export function NewSalePage() {
   }))
   const productOptions = (products.data?.content ?? []).map((p) => ({
     value: String(p.id),
-    label: `${p.name} · ${formatMoney(p.price)} · ${p.quantity === 0 ? 'out of stock' : `${p.quantity} in stock`}`,
+    label: `${p.name} · ${formatMoney(p.price)}${p.previousPrice ? ` (was ${formatMoney(p.previousPrice)})` : ''} · ${
+      p.quantity === 0 ? 'out of stock' : `${p.quantity} in stock`}`,
     disabled: p.quantity === 0,
   }))
 
@@ -141,7 +143,7 @@ export function NewSalePage() {
               {cart.map((line) => (
                 <Table.Tr key={line.product.id}>
                   <Table.Td>{line.product.name}</Table.Td>
-                  <Table.Td ta="right">{formatMoney(line.product.price)}</Table.Td>
+                  <Table.Td ta="right"><Price price={line.product.price} previousPrice={line.product.previousPrice} /></Table.Td>
                   <Table.Td>
                     <NumberInput
                       aria-label={`Quantity of ${line.product.name}`}

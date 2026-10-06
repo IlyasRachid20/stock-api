@@ -23,6 +23,8 @@ export interface Product {
   name: string
   category: Summary | null
   price: number
+  // The struck-through price during the 30 days after a price drop, otherwise null
+  previousPrice: number | null
   quantity: number
   minQuantity: number
   lowStock: boolean
@@ -31,6 +33,14 @@ export interface Product {
 export interface Summary {
   id: number
   name: string
+}
+
+export interface PriceChange {
+  id: number
+  oldPrice: number
+  newPrice: number
+  changedBy: string
+  changedAt: string
 }
 
 export interface Category {

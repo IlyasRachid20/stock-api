@@ -21,6 +21,9 @@ export const formatDay = (day: string) => shortDay.format(new Date(`${day}T00:00
 
 export const signed = (value: number) => (value > 0 ? `+${value}` : String(value))
 
+// The reduction shown next to a struck-through price: 9999 -> 9500 is 5%
+export const reductionPercent = (price: number, previousPrice: number) => Math.round((1 - price / previousPrice) * 100)
+
 // yyyy-MM-dd, n days before today (today included)
 export function daysAgo(n: number, today = new Date()): string {
   const d = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()))

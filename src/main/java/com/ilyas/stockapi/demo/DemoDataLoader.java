@@ -13,6 +13,7 @@ import com.ilyas.stockapi.entity.Category;
 import com.ilyas.stockapi.entity.Role;
 import com.ilyas.stockapi.repository.AppUserRepository;
 import com.ilyas.stockapi.repository.CategoryRepository;
+import com.ilyas.stockapi.repository.PriceChangeRepository;
 import com.ilyas.stockapi.repository.ProductRepository;
 import com.ilyas.stockapi.repository.SaleRepository;
 import com.ilyas.stockapi.repository.StockMovementRepository;
@@ -61,6 +62,7 @@ public class DemoDataLoader implements ApplicationRunner {
     private final SaleRepository saleRepository;
     private final StockMovementRepository movementRepository;
     private final CategoryRepository categoryRepository;
+    private final PriceChangeRepository priceChangeRepository;
     private final CategoryService categoryService;
     private final ProductService productService;
     private final CustomerService customerService;
@@ -70,7 +72,8 @@ public class DemoDataLoader implements ApplicationRunner {
 
     public DemoDataLoader(ProductRepository productRepository, AppUserRepository userRepository,
             SaleRepository saleRepository, StockMovementRepository movementRepository,
-            CategoryRepository categoryRepository, CategoryService categoryService,
+            CategoryRepository categoryRepository, PriceChangeRepository priceChangeRepository,
+            CategoryService categoryService,
             ProductService productService, CustomerService customerService, SaleService saleService,
             UserService userService, @Value("${app.demo.password:}") String demoPassword) {
         this.productRepository = productRepository;
@@ -78,6 +81,7 @@ public class DemoDataLoader implements ApplicationRunner {
         this.saleRepository = saleRepository;
         this.movementRepository = movementRepository;
         this.categoryRepository = categoryRepository;
+        this.priceChangeRepository = priceChangeRepository;
         this.categoryService = categoryService;
         this.productService = productService;
         this.customerService = customerService;
@@ -104,16 +108,17 @@ public class DemoDataLoader implements ApplicationRunner {
         long chargers = category("Chargers & cables");
         long protection = category("Protection");
 
-        // name, price, initial stock, minimum level, category: phones first, then accessories
+        // name, price, initial stock, minimum level, category: phones first, then accessories.
+        // Some prices change during the month (see below), so the shop shows price reductions.
         List<Long> products = List.of(
-                product("Galaxy S26", "9500.00", 30, 5, phones),
+                product("Galaxy S26", "9999.00", 30, 5, phones),
                 product("iPhone 17", "12900.00", 16, 5, phones),
                 product("Redmi Note 15", "2899.00", 45, 8, phones),
-                product("AirPods Pro 3", "2690.00", 18, 6, audio),
+                product("AirPods Pro 3", "2590.00", 18, 6, audio),
                 product("USB-C Charger 45W", "199.00", 90, 15, chargers),
                 product("USB-C Cable 1m", "49.90", 60, 20, chargers),
                 product("Screen Protector", "79.00", 55, 15, protection),
-                product("Phone Case", "129.00", 35, 10, protection));
+                product("Phone Case", "149.00", 35, 10, protection));
         // The initial stock arrived the day before the first sale
         movementRepository.findAll().forEach(m -> {
             m.setCreatedAt(firstDay.minus(Duration.ofHours(14)));
@@ -131,13 +136,22 @@ public class DemoDataLoader implements ApplicationRunner {
         int sales = 0;
         for (int day = 0; day < DAYS; day++) {
             Instant dayStart = firstDay.plus(Duration.ofDays(day));
-            if (day == 12) {
-                backdate(productService.restock(products.get(5), new RestockRequest(80, "Delivery #1042")).id(),
-                        dayStart.plus(Duration.ofHours(8)));
+            Instant morning = dayStart.plus(Duration.ofHours(8));
+            // A price rise (no reduction shown), then two price drops shown struck through
+            if (day == 5) {
+                changePrice(products.get(3), "AirPods Pro 3", "2690.00", audio, morning);
             }
             if (day == 20) {
-                backdate(productService.adjust(products.get(6), new AdjustmentRequest(-3, "Broken during delivery")).id(),
-                        dayStart.plus(Duration.ofHours(8)));
+                changePrice(products.get(0), "Galaxy S26", "9500.00", phones, morning);
+            }
+            if (day == 25) {
+                changePrice(products.get(7), "Phone Case", "129.00", protection, morning);
+            }
+            if (day == 12) {
+                backdate(productService.restock(products.get(5), new RestockRequest(80, "Delivery #1042")).id(), morning);
+            }
+            if (day == 20) {
+                backdate(productService.adjust(products.get(6), new AdjustmentRequest(-3, "Broken during delivery")).id(), morning);
             }
             // Opening hours 9:00-19:00, in time order so sale numbers follow the clock,
             // and never later than now (today's sales must not be in the future)
@@ -205,6 +219,20 @@ public class DemoDataLoader implements ApplicationRunner {
             movementRepository.save(m);
         });
         return true;
+    }
+
+    // Changes a price through the normal service (price history, struck-through price), then
+    // moves the change back to that day of the demo month
+    private void changePrice(long productId, String name, String price, long categoryId, Instant when) {
+        productService.update(productId, new ProductRequest(name, new BigDecimal(price), null, null, categoryId));
+        priceChangeRepository.findByProductIdOrderByChangedAtDescIdDesc(productId).stream().findFirst().ifPresent(change -> {
+            change.setChangedAt(when);
+            priceChangeRepository.save(change);
+        });
+        productRepository.findById(productId).filter(p -> p.getPriceReducedAt() != null).ifPresent(p -> {
+            p.setPriceReducedAt(when);
+            productRepository.save(p);
+        });
     }
 
     // Moves the latest stock movement of a product (a restock or a correction just made) back in time

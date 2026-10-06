@@ -1,9 +1,11 @@
-import { Button, Group, Modal, NumberInput, Select, Stack, Text, TextInput } from '@mantine/core'
+import { Button, Group, Modal, NumberInput, Select, Stack, Table, Text, TextInput } from '@mantine/core'
 import { useForm } from '@mantine/form'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCategories } from '../api/categories'
 import { api } from '../api/client'
-import type { Product } from '../api/types'
+import type { PriceChange, Product } from '../api/types'
+import { formatDateTime, formatMoney } from '../utils/format'
+import { QueryState } from './QueryState'
 import { notifySuccess, showApiErrors } from '../utils/notify'
 import { useRefreshStock } from '../utils/refresh'
 
@@ -71,6 +73,48 @@ export function ProductFormModal({ opened, onClose, product }: ModalProps & { pr
           </Group>
         </Stack>
       </form>
+    </Modal>
+  )
+}
+
+// Every price change of a product: when, from what to what, and who changed it
+export function PriceHistoryModal({ onClose, product }: { onClose: () => void; product: Product }) {
+  const history = useQuery({
+    queryKey: ['products', product.id, 'price-history'],
+    queryFn: () => api<PriceChange[]>(`/api/products/${product.id}/price-history`),
+  })
+
+  return (
+    <Modal opened onClose={onClose} title={`Price history: ${product.name}`} size="lg">
+      <QueryState isPending={history.isPending} error={history.error}>
+        {history.data?.length ? (
+          <Table>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Date</Table.Th>
+                <Table.Th ta="right">Old price</Table.Th>
+                <Table.Th ta="right">New price</Table.Th>
+                <Table.Th>By</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {history.data.map((c) => (
+                <Table.Tr key={c.id}>
+                  <Table.Td>{formatDateTime(c.changedAt)}</Table.Td>
+                  <Table.Td ta="right">{formatMoney(c.oldPrice)}</Table.Td>
+                  <Table.Td ta="right" c={c.newPrice < c.oldPrice ? 'green.8' : 'red.8'}>{formatMoney(c.newPrice)}</Table.Td>
+                  <Table.Td>{c.changedBy}</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        ) : (
+          <Text c="dimmed" size="sm">The price hasn't changed since the product was created.</Text>
+        )}
+        <Text c="dimmed" size="xs" mt="md">
+          After a price drop, the old price is shown struck through for 30 days: the lowest price of the 30 days before the drop.
+        </Text>
+      </QueryState>
     </Modal>
   )
 }

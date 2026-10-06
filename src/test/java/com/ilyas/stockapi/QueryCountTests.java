@@ -60,11 +60,15 @@ class QueryCountTests {
 	@Autowired
 	private CategoryRepository categoryRepository;
 
+	@Autowired
+	private com.ilyas.stockapi.repository.PriceChangeRepository priceChangeRepository;
+
 	@AfterEach
 	void cleanUp() {
 		stockMovementRepository.deleteAll();
 		saleItemRepository.deleteAll();
 		saleRepository.deleteAll();
+		priceChangeRepository.deleteAll();
 		productRepository.deleteAll();
 		categoryRepository.deleteAll();
 		customerRepository.deleteAll();

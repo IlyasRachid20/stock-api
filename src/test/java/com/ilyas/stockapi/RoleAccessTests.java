@@ -83,6 +83,7 @@ class RoleAccessTests {
 	void cashierCanReadEverything() throws Exception {
 		mockMvc.perform(get("/api/products")).andExpect(status().isOk());
 		mockMvc.perform(get("/api/products/" + productId)).andExpect(status().isOk());
+		mockMvc.perform(get("/api/products/" + productId + "/price-history")).andExpect(status().isOk());
 		mockMvc.perform(get("/api/customers")).andExpect(status().isOk());
 		mockMvc.perform(get("/api/sales")).andExpect(status().isOk());
 		mockMvc.perform(get("/api/sale-items")).andExpect(status().isOk());
