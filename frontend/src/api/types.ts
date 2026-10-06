@@ -36,6 +36,8 @@ export interface Product {
   quantity: number
   minQuantity: number
   lowStock: boolean
+  // Shown in the online shop
+  published: boolean
   // Cover first
   images: ProductImage[]
 }

@@ -1,7 +1,7 @@
 // This file holds the route configuration, not components meant for hot reload
 /* oxlint-disable react/only-export-components */
 import { lazy } from 'react'
-import { createBrowserRouter } from 'react-router'
+import { createBrowserRouter, Navigate } from 'react-router'
 import { RequireAuth } from './auth/RequireAuth'
 import { AppLayout } from './layout/AppLayout'
 import { LoginPage } from './pages/LoginPage'
@@ -18,10 +18,12 @@ const CustomersPage = lazy(() => import('./pages/CustomersPage').then((m) => ({ 
 const UsersPage = lazy(() => import('./pages/UsersPage').then((m) => ({ default: m.UsersPage })))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
 
+// The staff area (back-office) is under /admin; the root of the site is for the online shop
 export const routes = [
-  { path: '/login', element: <LoginPage /> },
+  { path: '/', element: <Navigate to="/admin" replace /> },
+  { path: '/admin/login', element: <LoginPage /> },
   {
-    path: '/',
+    path: '/admin',
     element: (
       <RequireAuth>
         <AppLayout />

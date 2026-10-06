@@ -26,7 +26,7 @@ This project is a complete, production-style answer to that problem:
 - **A Java / Spring Boot API** that keeps stock correct under concurrent sales (row locking, one transaction per sale), records every stock change with who made it and when, and exposes clear reports.
 - **A React dashboard** that a cashier can use all day (new sale in a few clicks, live total, stock and customer search) and that gives the owner the numbers: revenue per day, best sellers, low stock, CSV export.
 - **Security built in:** JWT login, hashed passwords, and roles that decide what each person can see and do (cashiers never see revenue).
-- **Built to be maintained:** versioned database migrations, a clean API contract, consistent errors, Docker, and **242 automated tests** on every change, from unit tests up to a real browser making a sale in the running app.
+- **Built to be maintained:** versioned database migrations, a clean API contract, consistent errors, Docker, and **252 automated tests** on every change, from unit tests up to a real browser making a sale in the running app.
 
 Every feature was added through a reviewed pull request with its tests, and bugs found along the way (lost stock updates, N+1 queries, time-zone errors) are covered by tests so they can't come back.
 
@@ -37,6 +37,7 @@ Every feature was added through a reviewed pull request with its tests, and bugs
 - **Low-stock alerts:** each product has a minimum level; `GET /api/products/low-stock` lists what needs reordering, emptiest first.
 - **Categories:** products are filed in categories (Phones, Audio…), the product list filters by category, and the reports show the revenue of each category. A category can only be deleted once it's empty.
 - **Price history and honest reductions:** every price change is recorded with who made it and when. After a price drop, the old price is shown struck through for 30 days, and it's the lowest price of the 30 days before the drop (the European rule), so raising a price just before a "promotion" can't fake a reduction.
+- **Public catalog for the online shop:** `/api/shop/...` needs no login and only shows published products, with "only 3 left" instead of the exact stock (no minimum levels, no price history). A product hidden from the shop is still sold at the counter.
 - **Product pictures:** up to 6 per product, the first one is the cover. The browser shrinks a photo before sending it; the server checks it (size read from the header before decoding), shrinks it to 1200 px and saves it again as a JPEG, so hidden data such as a phone photo's GPS position is never kept. Pictures live in PostgreSQL (a free host's disk is wiped on restart) and are cached by browsers for a year.
 - **Sales reports (admin):** totals, day-by-day sales with no gaps (ready for charts), best sellers, revenue by category and a CSV export, counted in the shop's own time zone.
 - **Stock always in sync:** selling an item takes it out of stock; deleting an item or a whole sale puts it back.
@@ -49,7 +50,7 @@ Every feature was added through a reviewed pull request with its tests, and bugs
 - **Pagination, search and sorting** on every list, with a hard cap of 100 items per page.
 - **Clean API contract:** requests and responses are dedicated DTOs (Java records), separate from the database entities, so internal fields never leak and the database can change without breaking clients.
 - **Interactive documentation:** Swagger UI lists every endpoint and lets you try it from the browser.
-- **195 backend tests, 40 frontend tests and 7 end-to-end tests** run on every pull request with GitHub Actions: the backend on H2 **and on a real PostgreSQL**, and the end-to-end tests in a **real Chrome** against the whole app running in Docker.
+- **204 backend tests, 41 frontend tests and 7 end-to-end tests** run on every pull request with GitHub Actions: the backend on H2 **and on a real PostgreSQL**, and the end-to-end tests in a **real Chrome** against the whole app running in Docker.
 
 ## Tech stack
 
@@ -133,6 +134,7 @@ erDiagram
 | Reports (`ADMIN` only) | `GET /api/reports/summary` · `GET /api/reports/sales-by-day` · `GET /api/reports/top-products` · `GET /api/reports/sales-by-category` · `GET /api/reports/sales.csv` (all take `from`/`to`, default the last 30 days) |
 | Sales | `GET/POST /api/sales` · `GET/DELETE /api/sales/{id}` |
 | Sale items | `GET/POST /api/sale-items` · `GET/DELETE /api/sale-items/{id}` |
+| Online shop (public, no login) | `GET /api/shop/home` · `GET /api/shop/categories` · `GET /api/shop/products?category=&search=&ids=` · `GET /api/shop/products/{id}` |
 | Auth | `POST /api/auth/login` (public) · `GET /api/auth/me` |
 | Users (`ADMIN` only) | `GET/POST /api/users` · `DELETE /api/users/{id}` |
 
@@ -289,7 +291,7 @@ cp .env.example .env        # then set the passwords and APP_JWT_SECRET in .env
 docker compose up --build
 ```
 
-Open **http://localhost:8080** for the dashboard, and http://localhost:8080/swagger-ui.html for the API documentation. The image builds the React dashboard and the API serves it from the same address, so there is nothing else to start. The database is kept in a Docker volume between restarts; `docker compose down --volumes` deletes it.
+Open **http://localhost:8080/admin** for the back-office, and http://localhost:8080/swagger-ui.html for the API documentation. The image builds the React dashboard and the API serves it from the same address, so there is nothing else to start. The database is kept in a Docker volume between restarts; `docker compose down --volumes` deletes it.
 
 To try it with sample data (a month of sales and a `demo` cashier account with the password `demo-cashier`), set `APP_DEMO_DATA=true` and `APP_DEMO_PASSWORD=demo-cashier` in `.env` before the first start.
 
@@ -324,7 +326,7 @@ The `frontend/` folder holds a React + TypeScript dashboard for the API:
 - **Dashboard:** revenue, sales, items sold and average sale for 7, 30 or 90 days, a revenue-per-day chart, best sellers, revenue by category, CSV export (admins), and the low-stock list (everyone).
 - **New sale:** pick a customer, add products (with price and stock shown), adjust quantities, see the total, complete the sale in one request.
 - **Sales:** list with totals, details of each sale, cancelling a sale puts its items back in stock (admins).
-- **Products:** pictures, search, filter by category (kept in the address, so it can be bookmarked), pagination, badges, recent price drops struck through with the reduction (also in the new sale screen), price history; admins add pictures (shrunk in the browser first) and choose the cover; admins create, edit, restock, correct stock and delete.
+- **Products:** pictures, "Show in the online shop" switch, search, filter by category (kept in the address, so it can be bookmarked), pagination, badges, recent price drops struck through with the reduction (also in the new sale screen), price history; admins add pictures (shrunk in the browser first) and choose the cover; admins create, edit, restock, correct stock and delete.
 - **Categories** (admins): add, rename and delete categories; each one links to its products.
 - **Customers:** search, create and edit (everyone), delete (admins).
 - **Stock history:** every stock change with who made it and when, filterable by type.
@@ -332,7 +334,7 @@ The `frontend/` folder holds a React + TypeScript dashboard for the API:
 
 What the interface shows depends on the role: cashiers don't see (or load) the revenue reports.
 
-In production (Docker, Render) the API serves the built dashboard at `/`: any page that isn't the API or a file returns the dashboard, so links and refreshes on `/sales/new` work.
+The back-office lives under `/admin` (`/admin/login`, `/admin/products`...); the root of the site is kept for the online shop. In production (Docker, Render) the API serves the built app from the same address: any page that isn't the API or a file returns the app, so links and refreshes on `/admin/sales/new` work.
 
 For development, with the API running on port 8080:
 
@@ -342,7 +344,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. Vite forwards `/api` to the API, so no CORS setup is needed. Checks: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
+Open http://localhost:5173/admin. Vite forwards `/api` to the API, so no CORS setup is needed. Checks: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
 
 **End-to-end tests** (`frontend/e2e`, Playwright) drive a real browser through the whole app started with Docker Compose in demo mode: a cashier makes a sale and the stock goes down, a cashier can't see revenue or user management, an admin restocks a product, the demo products are filed in categories, recent price drops are struck through, demo pictures load and an admin adds and deletes one, pages survive a refresh and logout ends the session. They use the Chrome or Edge already installed:
 

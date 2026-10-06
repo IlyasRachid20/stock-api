@@ -41,7 +41,7 @@ export function SalesPage() {
     <Stack>
       <Group justify="space-between">
         <Title order={2}>Sales</Title>
-        <Button component={Link} to="/sales/new" leftSection={<IconPlus size={16} />}>New sale</Button>
+        <Button component={Link} to="/admin/sales/new" leftSection={<IconPlus size={16} />}>New sale</Button>
       </Group>
 
       <QueryState isPending={sales.isPending} error={sales.error}>

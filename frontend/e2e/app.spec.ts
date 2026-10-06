@@ -12,7 +12,7 @@ function requiredEnv(name: string): string {
 }
 
 async function logIn(page: Page, user: { username: string; password: string }) {
-  await page.goto('/login')
+  await page.goto('/admin/login')
   await page.getByLabel('Username', { exact: true }).fill(user.username)
   await page.getByLabel('Password', { exact: true }).fill(user.password)
   await page.getByRole('button', { name: 'Sign in' }).click()
@@ -21,7 +21,7 @@ async function logIn(page: Page, user: { username: string; password: string }) {
 
 // Current stock of a product, read from the "In stock" column of the Products page
 async function stockOf(page: Page, product: string): Promise<number> {
-  await page.goto('/products')
+  await page.goto('/admin/products')
   const row = page.getByRole('row').filter({ has: page.getByRole('cell', { name: product, exact: true }) })
   await row.waitFor() // the table is loaded, headers included
   const column = (await page.getByRole('columnheader').allInnerTexts()).indexOf('In stock')
@@ -55,7 +55,7 @@ test('a cashier sells two products in one sale and the stock goes down', async (
   expect(await stockOf(page, 'USB-C Cable 1m')).toBe(cablesBefore - 2)
 
   // The stock history shows both lines, made by the cashier
-  await page.goto('/stock-history')
+  await page.goto('/admin/stock-history')
   const latest = page.getByRole('row').nth(1)
   await expect(latest).toContainText('demo')
   await expect(latest).toContainText('Sale')
@@ -70,8 +70,8 @@ test('a cashier sees no revenue and cannot open user management', async ({ page 
   await expect(page.getByRole('button', { name: 'Export CSV' })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Users' })).toHaveCount(0)
 
-  await page.goto('/users')
-  await expect(page).toHaveURL(/\/$/)
+  await page.goto('/admin/users')
+  await expect(page).toHaveURL(/\/admin$/)
 })
 
 test('an admin sees the reports and restocks a product', async ({ page }) => {
@@ -90,13 +90,13 @@ test('an admin sees the reports and restocks a product', async ({ page }) => {
   await page.getByRole('button', { name: 'Add to stock' }).click()
 
   await expect(page.getByText(`Phone Case: ${before + 12} in stock`)).toBeVisible()
-  await page.goto('/stock-history')
+  await page.goto('/admin/stock-history')
   await expect(page.getByRole('row').filter({ hasText: reason })).toContainText('admin')
 })
 
 test('the products of the demo shop are filed in categories', async ({ page }) => {
   await logIn(page, cashier)
-  await page.goto('/products')
+  await page.goto('/admin/products')
   await expect(page.getByRole('row').filter({ hasText: 'Galaxy S26' })).toContainText('Phones')
 
   await pick(page, 'Category', /^Protection$/)
@@ -109,7 +109,7 @@ test('the products of the demo shop are filed in categories', async ({ page }) =
 
 test('recent price drops show the old price struck through', async ({ page }) => {
   await logIn(page, cashier)
-  await page.goto('/products')
+  await page.goto('/admin/products')
 
   // In the demo month the phone went from 9,999 to 9,500 and the case from 149 to 129
   const phone = page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Galaxy S26', exact: true }) })
@@ -121,7 +121,7 @@ test('recent price drops show the old price struck through', async ({ page }) =>
 
 test('demo products have pictures, and an admin adds one and deletes it', async ({ page }) => {
   await logIn(page, admin)
-  await page.goto('/products')
+  await page.goto('/admin/products')
 
   // The cover picture comes from the API and really loads
   const row = page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Redmi Note 15', exact: true }) })
@@ -147,7 +147,7 @@ test('pages survive a browser refresh, and logging out ends the session', async 
   await logIn(page, cashier)
 
   // Served by the API: a refresh on a dashboard page must not be a 404
-  await page.goto('/sales/new')
+  await page.goto('/admin/sales/new')
   await page.reload()
   await expect(page.getByRole('heading', { name: 'New sale' })).toBeVisible()
 
@@ -158,6 +158,6 @@ test('pages survive a browser refresh, and logging out ends the session', async 
   // ...until logging out
   await page.getByRole('button', { name: 'Log out' }).click()
   await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
-  await page.goto('/products')
-  await expect(page).toHaveURL(/\/login$/)
+  await page.goto('/admin/products')
+  await expect(page).toHaveURL(/\/admin\/login$/)
 })

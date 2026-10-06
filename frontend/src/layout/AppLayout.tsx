@@ -1,19 +1,20 @@
 import { Suspense } from 'react'
-import { AppShell, Badge, Burger, Button, Center, Group, Loader, NavLink, Text, Title } from '@mantine/core'
+import { AppShell, Badge, Burger, Button, Center, Group, Loader, NavLink, Text } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { IconBox, IconCashRegister, IconCategory, IconGauge, IconHistory, IconLogout, IconReceipt, IconUserShield, IconUsers } from '@tabler/icons-react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { useAuth } from '../auth/useAuth'
+import { Logo } from '../components/Logo'
 
 const links = [
-  { to: '/', label: 'Dashboard', icon: IconGauge },
-  { to: '/sales/new', label: 'New sale', icon: IconCashRegister },
-  { to: '/sales', label: 'Sales', icon: IconReceipt },
-  { to: '/products', label: 'Products', icon: IconBox },
-  { to: '/categories', label: 'Categories', icon: IconCategory, adminOnly: true },
-  { to: '/customers', label: 'Customers', icon: IconUsers },
-  { to: '/stock-history', label: 'Stock history', icon: IconHistory },
-  { to: '/users', label: 'Users', icon: IconUserShield, adminOnly: true },
+  { to: '/admin', label: 'Dashboard', icon: IconGauge },
+  { to: '/admin/sales/new', label: 'New sale', icon: IconCashRegister },
+  { to: '/admin/sales', label: 'Sales', icon: IconReceipt },
+  { to: '/admin/products', label: 'Products', icon: IconBox },
+  { to: '/admin/categories', label: 'Categories', icon: IconCategory, adminOnly: true },
+  { to: '/admin/customers', label: 'Customers', icon: IconUsers },
+  { to: '/admin/stock-history', label: 'Stock history', icon: IconHistory },
+  { to: '/admin/users', label: 'Users', icon: IconUserShield, adminOnly: true },
 ]
 
 export function AppLayout() {
@@ -31,7 +32,7 @@ export function AppLayout() {
         <Group h="100%" px="md" justify="space-between">
           <Group gap="sm">
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Toggle navigation" />
-            <Title order={3}>Stock API</Title>
+            <Logo size="sm" subtitle="Back-office" />
           </Group>
           <Group gap="sm">
             <Text size="sm" visibleFrom="xs">{session?.username}</Text>
@@ -51,7 +52,7 @@ export function AppLayout() {
             to={to}
             label={label}
             leftSection={<Icon size={18} />}
-            active={to === '/' || to === '/sales' ? pathname === to : pathname.startsWith(to)}
+            active={to === '/admin' || to === '/admin/sales' ? pathname === to : pathname.startsWith(to)}
             onClick={close}
           />
         ))}

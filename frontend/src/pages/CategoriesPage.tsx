@@ -57,7 +57,7 @@ export function CategoriesPage() {
                   <Table.Td>{c.name}</Table.Td>
                   <Table.Td ta="right">
                     {/* Opens the product list filtered on this category */}
-                    <Anchor component={Link} to={`/products?category=${c.id}`} size="sm">
+                    <Anchor component={Link} to={`/admin/products?category=${c.id}`} size="sm">
                       {c.productCount} {c.productCount === 1 ? 'product' : 'products'}
                     </Anchor>
                   </Table.Td>

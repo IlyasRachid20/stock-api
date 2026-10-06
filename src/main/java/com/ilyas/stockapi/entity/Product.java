@@ -35,6 +35,10 @@ public class Product {
     @Column(name = "min_quantity", nullable = false)
     private Integer minQuantity = 0;
 
+    // Shown in the online shop; a hidden product is still sold at the counter
+    @Column(nullable = false)
+    private Boolean published = true;
+
     // Optional: products without a category are "uncategorized"
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
@@ -73,6 +77,9 @@ public class Product {
 
     public Category getCategory() { return category; }
     public void setCategory(Category category) { this.category = category; }
+
+    public boolean isPublished() { return published; }
+    public void setPublished(boolean published) { this.published = published; }
 
     public List<ProductImage> getImages() { return images; }
 

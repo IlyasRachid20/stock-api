@@ -23,7 +23,7 @@ const shot = async (name) => {
   console.log(`saved ${name}.png`)
 }
 
-await page.goto(`${baseUrl}/login`)
+await page.goto(`${baseUrl}/admin/login`)
 await shot('login')
 
 await page.getByLabel('Username', { exact: true }).fill('admin')
@@ -32,7 +32,7 @@ await page.getByRole('button', { name: 'Sign in' }).click()
 await page.getByText('Revenue per day').waitFor()
 await shot('dashboard')
 
-await page.goto(`${baseUrl}/sales/new`)
+await page.goto(`${baseUrl}/admin/sales/new`)
 await page.getByRole('combobox', { name: 'Customer' }).click()
 await page.getByRole('option', { name: /Ahmed Benali/ }).click()
 for (const product of ['Galaxy S26', 'USB-C Cable 1m', 'Screen Protector']) {
@@ -43,11 +43,11 @@ await page.getByLabel('Quantity of USB-C Cable 1m').fill('2')
 await page.getByText('Total:').click()
 await shot('new-sale')
 
-await page.goto(`${baseUrl}/products`)
+await page.goto(`${baseUrl}/admin/products`)
 await page.getByText('Galaxy S26').waitFor()
 await shot('products')
 
-await page.goto(`${baseUrl}/stock-history`)
+await page.goto(`${baseUrl}/admin/stock-history`)
 await page.getByText('Stock history').first().waitFor()
 await shot('stock-history')
 

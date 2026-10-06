@@ -198,7 +198,7 @@ public class DemoDataLoader implements ApplicationRunner {
 
     private long product(String name, String price, int quantity, int minQuantity, long categoryId, String description) {
         long id = productService.create(
-                new ProductRequest(name, new BigDecimal(price), quantity, minQuantity, categoryId, description)).id();
+                new ProductRequest(name, new BigDecimal(price), quantity, minQuantity, categoryId, description, true)).id();
         // "USB-C Cable 1m" -> demo/pictures/usb-c-cable-1m.jpg
         ClassPathResource picture = new ClassPathResource(
                 "demo/pictures/" + name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-") + ".jpg");
@@ -253,7 +253,7 @@ public class DemoDataLoader implements ApplicationRunner {
     // moves the change back to that day of the demo month
     private void changePrice(long productId, String name, String price, long categoryId, Instant when) {
         String description = productRepository.findById(productId).orElseThrow().getDescription();
-        productService.update(productId, new ProductRequest(name, new BigDecimal(price), null, null, categoryId, description));
+        productService.update(productId, new ProductRequest(name, new BigDecimal(price), null, null, categoryId, description, null));
         priceChangeRepository.findByProductIdOrderByChangedAtDescIdDesc(productId).stream().findFirst().ifPresent(change -> {
             change.setChangedAt(when);
             priceChangeRepository.save(change);

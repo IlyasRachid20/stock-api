@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Alert, Button, Center, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core'
+import { Alert, Button, Center, Paper, PasswordInput, Stack, Text, TextInput } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/useAuth'
+import { Logo } from '../components/Logo'
 
 export function LoginPage() {
   const { session, login } = useAuth()
@@ -18,7 +19,7 @@ export function LoginPage() {
     },
   })
 
-  const from = (location.state as { from?: string } | null)?.from ?? '/'
+  const from = (location.state as { from?: string } | null)?.from ?? '/admin'
   if (session) return <Navigate to={from} replace />
 
   const submit = form.onSubmit(async ({ username, password }) => {
@@ -40,8 +41,8 @@ export function LoginPage() {
         <form onSubmit={submit}>
           <Stack>
             <div>
-              <Title order={2}>Stock API</Title>
-              <Text c="dimmed" size="sm">Sign in to manage products, sales and stock</Text>
+              <Logo subtitle="Staff area" />
+              <Text c="dimmed" size="sm" mt="md">Sign in to manage products, sales and stock</Text>
             </div>
             {error && <Alert color="red">{error}</Alert>}
             <TextInput label="Username" autoComplete="username" {...form.getInputProps('username')} />

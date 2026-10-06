@@ -81,6 +81,7 @@ jobs:
           grep -qx "6 SQL" history.txt
           grep -qx "7 SQL" history.txt
           grep -qx "8 SQL" history.txt
+          grep -qx "9 SQL" history.txt
 
   # Builds the Docker image and starts the full stack with Docker Compose,
   # then sends real requests to check it works end to end.
@@ -112,9 +113,11 @@ jobs:
           grep -q '"name":"CI Smoke Charger"' product.json
           curl -fsS -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/products?search=smoke" | grep -q '"totalElements":1'
           curl -fsS -o /dev/null http://localhost:8080/swagger-ui/index.html
-          # The dashboard is served at / and on its own pages (refresh on /sales/new), with its files
+          # The website and the back-office are served at / and on their own pages (refresh on /admin/sales/new), with their files
           curl -fsS http://localhost:8080/ | grep -q '<div id="root">'
-          curl -fsS http://localhost:8080/sales/new | grep -q '<div id="root">'
+          curl -fsS http://localhost:8080/admin/sales/new | grep -q '<div id="root">'
+          # The shop's catalog is public
+          curl -fsS http://localhost:8080/api/shop/home | grep -q '"categories"'
           ASSET=$(curl -fsS http://localhost:8080/ | grep -o '/assets/[^"]*\.js' | head -1)
           curl -fsS -o /dev/null "http://localhost:8080$ASSET"
 

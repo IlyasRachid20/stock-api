@@ -1,4 +1,4 @@
-import { Button, Group, Modal, NumberInput, Select, Stack, Table, Text, Textarea, TextInput } from '@mantine/core'
+import { Button, Group, Modal, NumberInput, Select, Stack, Switch, Table, Text, Textarea, TextInput } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCategories } from '../api/categories'
@@ -23,6 +23,7 @@ export function ProductFormModal({ opened, onClose, product }: ModalProps & { pr
       name: product?.name ?? '',
       categoryId: product?.category ? String(product.category.id) : (null as string | null),
       description: product?.description ?? '',
+      published: product?.published ?? true,
       price: product?.price ?? ('' as number | string),
       quantity: 0 as number | string,
       minQuantity: product?.minQuantity ?? (0 as number | string),
@@ -41,6 +42,7 @@ export function ProductFormModal({ opened, onClose, product }: ModalProps & { pr
         minQuantity: Number(values.minQuantity) || 0,
         categoryId: values.categoryId ? Number(values.categoryId) : null,
         description: values.description.trim() || null,
+        published: values.published,
       }
       return product
         ? api<Product>(`/api/products/${product.id}`, { method: 'PUT', body })
@@ -71,6 +73,8 @@ export function ProductFormModal({ opened, onClose, product }: ModalProps & { pr
           <NumberInput label="Price (MAD)" min={0} decimalScale={2} fixedDecimalScale {...form.getInputProps('price')} />
           {!product && <NumberInput label="Initial stock" min={0} allowDecimal={false} {...form.getInputProps('quantity')} />}
           <NumberInput label="Minimum stock (low-stock alert)" min={0} allowDecimal={false} {...form.getInputProps('minQuantity')} />
+          <Switch label="Show in the online shop" description="A hidden product can still be sold at the counter"
+            {...form.getInputProps('published', { type: 'checkbox' })} />
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>Cancel</Button>
             <Button type="submit" loading={save.isPending}>{product ? 'Save' : 'Create'}</Button>
