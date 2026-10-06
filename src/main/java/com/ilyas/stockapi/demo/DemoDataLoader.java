@@ -1,6 +1,7 @@
 package com.ilyas.stockapi.demo;
 
 import com.ilyas.stockapi.dto.AdjustmentRequest;
+import com.ilyas.stockapi.dto.CategoryRequest;
 import com.ilyas.stockapi.dto.CustomerRequest;
 import com.ilyas.stockapi.dto.ProductRequest;
 import com.ilyas.stockapi.dto.RestockRequest;
@@ -8,11 +9,14 @@ import com.ilyas.stockapi.dto.SaleItemResponse;
 import com.ilyas.stockapi.dto.SaleRequest;
 import com.ilyas.stockapi.dto.SaleResponse;
 import com.ilyas.stockapi.dto.UserRequest;
+import com.ilyas.stockapi.entity.Category;
 import com.ilyas.stockapi.entity.Role;
 import com.ilyas.stockapi.repository.AppUserRepository;
+import com.ilyas.stockapi.repository.CategoryRepository;
 import com.ilyas.stockapi.repository.ProductRepository;
 import com.ilyas.stockapi.repository.SaleRepository;
 import com.ilyas.stockapi.repository.StockMovementRepository;
+import com.ilyas.stockapi.service.CategoryService;
 import com.ilyas.stockapi.service.CustomerService;
 import com.ilyas.stockapi.service.ProductService;
 import com.ilyas.stockapi.service.SaleService;
@@ -56,6 +60,8 @@ public class DemoDataLoader implements ApplicationRunner {
     private final AppUserRepository userRepository;
     private final SaleRepository saleRepository;
     private final StockMovementRepository movementRepository;
+    private final CategoryRepository categoryRepository;
+    private final CategoryService categoryService;
     private final ProductService productService;
     private final CustomerService customerService;
     private final SaleService saleService;
@@ -64,12 +70,15 @@ public class DemoDataLoader implements ApplicationRunner {
 
     public DemoDataLoader(ProductRepository productRepository, AppUserRepository userRepository,
             SaleRepository saleRepository, StockMovementRepository movementRepository,
+            CategoryRepository categoryRepository, CategoryService categoryService,
             ProductService productService, CustomerService customerService, SaleService saleService,
             UserService userService, @Value("${app.demo.password:}") String demoPassword) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.saleRepository = saleRepository;
         this.movementRepository = movementRepository;
+        this.categoryRepository = categoryRepository;
+        this.categoryService = categoryService;
         this.productService = productService;
         this.customerService = customerService;
         this.saleService = saleService;
@@ -90,16 +99,21 @@ public class DemoDataLoader implements ApplicationRunner {
         Instant firstDay = LocalDate.now(ZoneOffset.UTC).minusDays(DAYS - 1).atStartOfDay(ZoneOffset.UTC).toInstant();
         Random random = new Random(42);
 
-        // name, price, initial stock, minimum level: phones first, then accessories
+        long phones = category("Phones");
+        long audio = category("Audio");
+        long chargers = category("Chargers & cables");
+        long protection = category("Protection");
+
+        // name, price, initial stock, minimum level, category: phones first, then accessories
         List<Long> products = List.of(
-                product("Galaxy S26", "9500.00", 30, 5),
-                product("iPhone 17", "12900.00", 16, 5),
-                product("Redmi Note 15", "2899.00", 45, 8),
-                product("AirPods Pro 3", "2690.00", 18, 6),
-                product("USB-C Charger 45W", "199.00", 90, 15),
-                product("USB-C Cable 1m", "49.90", 60, 20),
-                product("Screen Protector", "79.00", 55, 15),
-                product("Phone Case", "129.00", 35, 10));
+                product("Galaxy S26", "9500.00", 30, 5, phones),
+                product("iPhone 17", "12900.00", 16, 5, phones),
+                product("Redmi Note 15", "2899.00", 45, 8, phones),
+                product("AirPods Pro 3", "2690.00", 18, 6, audio),
+                product("USB-C Charger 45W", "199.00", 90, 15, chargers),
+                product("USB-C Cable 1m", "49.90", 60, 20, chargers),
+                product("Screen Protector", "79.00", 55, 15, protection),
+                product("Phone Case", "129.00", 35, 10, protection));
         // The initial stock arrived the day before the first sale
         movementRepository.findAll().forEach(m -> {
             m.setCreatedAt(firstDay.minus(Duration.ofHours(14)));
@@ -141,12 +155,19 @@ public class DemoDataLoader implements ApplicationRunner {
             }
         }
 
-        log.info("Demo mode: added {} products, {} customers and {} sales over {} days",
+        log.info("Demo mode: added {} products in 4 categories, {} customers and {} sales over {} days",
                 products.size(), customers.size(), sales, DAYS);
     }
 
-    private long product(String name, String price, int quantity, int minQuantity) {
-        return productService.create(new ProductRequest(name, new BigDecimal(price), quantity, minQuantity)).id();
+    // Reuses a category with that name if the shop already has one
+    private long category(String name) {
+        return categoryRepository.findByNameIgnoreCase(name).map(Category::getId)
+                .orElseGet(() -> categoryService.create(new CategoryRequest(name)).id());
+    }
+
+    private long product(String name, String price, int quantity, int minQuantity, long categoryId) {
+        return productService.create(
+                new ProductRequest(name, new BigDecimal(price), quantity, minQuantity, categoryId)).id();
     }
 
     private long customer(String name, String email, String phone) {

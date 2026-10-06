@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { AppShell, Badge, Burger, Button, Center, Group, Loader, NavLink, Text, Title } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
-import { IconBox, IconCashRegister, IconGauge, IconHistory, IconLogout, IconReceipt, IconUserShield, IconUsers } from '@tabler/icons-react'
+import { IconBox, IconCashRegister, IconCategory, IconGauge, IconHistory, IconLogout, IconReceipt, IconUserShield, IconUsers } from '@tabler/icons-react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { useAuth } from '../auth/useAuth'
 
@@ -10,6 +10,7 @@ const links = [
   { to: '/sales/new', label: 'New sale', icon: IconCashRegister },
   { to: '/sales', label: 'Sales', icon: IconReceipt },
   { to: '/products', label: 'Products', icon: IconBox },
+  { to: '/categories', label: 'Categories', icon: IconCategory, adminOnly: true },
   { to: '/customers', label: 'Customers', icon: IconUsers },
   { to: '/stock-history', label: 'Stock history', icon: IconHistory },
   { to: '/users', label: 'Users', icon: IconUserShield, adminOnly: true },

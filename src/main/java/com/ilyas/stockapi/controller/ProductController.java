@@ -23,12 +23,13 @@ public class ProductController {
         this.productService = productService;
     }
 
-    // GET /api/products?search=galaxy&page=0&size=20&sort=price,desc
+    // GET /api/products?search=galaxy&categoryId=1&page=0&size=20&sort=price,desc
     @GetMapping
     public PagedModel<ProductResponse> getAll(
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long categoryId,
             @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
-        return new PagedModel<>(productService.find(search, pageable));
+        return new PagedModel<>(productService.find(search, categoryId, pageable));
     }
 
     // What needs reordering: quantity at or below minQuantity, emptiest first
@@ -48,7 +49,7 @@ public class ProductController {
         return productService.create(request);
     }
 
-    // quantity is optional here: leave it out to change only name and price
+    // quantity is optional here: leave it out to change only name, price and category
     @PutMapping("/{id}")
     public ProductResponse update(@PathVariable Long id, @Valid @RequestBody ProductRequest request) {
         return productService.update(id, request);

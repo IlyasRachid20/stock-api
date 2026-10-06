@@ -21,6 +21,7 @@ export interface Me {
 export interface Product {
   id: number
   name: string
+  category: Summary | null
   price: number
   quantity: number
   minQuantity: number
@@ -30,6 +31,12 @@ export interface Product {
 export interface Summary {
   id: number
   name: string
+}
+
+export interface Category {
+  id: number
+  name: string
+  productCount: number
 }
 
 export interface Customer {
@@ -95,6 +102,14 @@ export interface DailySales {
 
 export interface TopProduct {
   productId: number
+  name: string
+  quantitySold: number
+  revenue: number
+}
+
+// categoryId is null for the "Uncategorized" group
+export interface CategorySales {
+  categoryId: number | null
   name: string
   quantitySold: number
   revenue: number

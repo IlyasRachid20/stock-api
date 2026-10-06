@@ -19,11 +19,13 @@ async function logIn(page: Page, user: { username: string; password: string }) {
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
 }
 
-// Current stock of a product, read from the Products page
+// Current stock of a product, read from the "In stock" column of the Products page
 async function stockOf(page: Page, product: string): Promise<number> {
   await page.goto('/products')
   const row = page.getByRole('row').filter({ has: page.getByRole('cell', { name: product, exact: true }) })
-  return Number(await row.getByRole('cell').nth(2).innerText())
+  await row.waitFor() // the table is loaded, headers included
+  const column = (await page.getByRole('columnheader').allInnerTexts()).indexOf('In stock')
+  return Number(await row.getByRole('cell').nth(column).innerText())
 }
 
 async function pick(page: Page, field: string, option: RegExp) {
@@ -87,6 +89,19 @@ test('an admin sees the reports and restocks a product', async ({ page }) => {
   await expect(page.getByText(`Phone Case: ${before + 12} in stock`)).toBeVisible()
   await page.goto('/stock-history')
   await expect(page.getByRole('row').filter({ hasText: reason })).toContainText('admin')
+})
+
+test('the products of the demo shop are filed in categories', async ({ page }) => {
+  await logIn(page, cashier)
+  await page.goto('/products')
+  await expect(page.getByRole('row').filter({ hasText: 'Galaxy S26' })).toContainText('Phones')
+
+  await pick(page, 'Category', /^Protection$/)
+
+  await expect(page).toHaveURL(/category=\d+/)
+  await expect(page.getByRole('cell', { name: 'Phone Case', exact: true })).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'Screen Protector', exact: true })).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'Galaxy S26', exact: true })).toHaveCount(0)
 })
 
 test('pages survive a browser refresh, and logging out ends the session', async ({ page }) => {

@@ -1,5 +1,6 @@
 package com.ilyas.stockapi.service;
 
+import com.ilyas.stockapi.dto.report.CategorySales;
 import com.ilyas.stockapi.dto.report.DailySales;
 import com.ilyas.stockapi.dto.report.SalesSummary;
 import com.ilyas.stockapi.dto.report.TopProduct;
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,6 +36,7 @@ import java.util.stream.Collectors;
 public class ReportService {
 
     private static final int MAX_DAYS = 366;
+    private static final String UNCATEGORIZED = "Uncategorized";
     private static final DateTimeFormatter CSV_DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final SaleItemRepository saleItemRepository;
@@ -82,15 +85,32 @@ public class ReportService {
                 .toList();
     }
 
+    // Revenue per category, highest first, with products without a category grouped as "Uncategorized".
+    // A product counts in its current category, also for sales made before it was moved.
+    public List<CategorySales> salesByCategory(LocalDate from, LocalDate to) {
+        Map<Long, List<SaleLine>> byCategory = new LinkedHashMap<>(); // the null key is "no category"
+        for (SaleLine line : lines(range(from, to))) {
+            byCategory.computeIfAbsent(line.categoryId(), id -> new ArrayList<>()).add(line);
+        }
+        return byCategory.entrySet().stream()
+                .map(entry -> new CategorySales(entry.getKey(),
+                        entry.getKey() == null ? UNCATEGORIZED : entry.getValue().get(0).categoryName(),
+                        itemsSold(entry.getValue()), total(entry.getValue())))
+                .sorted(Comparator.comparing(CategorySales::revenue, Comparator.reverseOrder())
+                        .thenComparing(CategorySales::name))
+                .toList();
+    }
+
     // One row per sold line; opens fine in Excel and Google Sheets
     public void writeSalesCsv(LocalDate from, LocalDate to, Writer out) throws IOException {
-        out.write("date,sale_id,customer,product,quantity,unit_price,line_total\n");
+        out.write("date,sale_id,customer,product,category,quantity,unit_price,line_total\n");
         for (SaleLine line : lines(range(from, to))) {
             out.write(String.join(",",
                     CSV_DATE_TIME.format(line.saleDate().atZone(zone)),
                     line.saleId().toString(),
                     csv(line.customerName()),
                     csv(line.productName()),
+                    csv(line.categoryName()),
                     line.quantity().toString(),
                     line.unitPrice().toPlainString(),
                     line.lineTotal().toPlainString()));

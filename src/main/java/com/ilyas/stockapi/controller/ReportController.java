@@ -1,5 +1,6 @@
 package com.ilyas.stockapi.controller;
 
+import com.ilyas.stockapi.dto.report.CategorySales;
 import com.ilyas.stockapi.dto.report.DailySales;
 import com.ilyas.stockapi.dto.report.SalesSummary;
 import com.ilyas.stockapi.dto.report.TopProduct;
@@ -48,6 +49,14 @@ public class ReportController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "5") int limit) {
         return reportService.topProducts(from, to, limit);
+    }
+
+    // Revenue per category, highest first ("Uncategorized" for products without one)
+    @GetMapping("/sales-by-category")
+    public List<CategorySales> salesByCategory(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return reportService.salesByCategory(from, to);
     }
 
     // Downloads sales-2026-09-01_2026-09-30.csv

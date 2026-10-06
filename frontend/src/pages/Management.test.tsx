@@ -15,12 +15,16 @@ const page = <T,>(content: T[]) => ({ content, page: { size: 20, number: 0, tota
 const phone = { id: 1, name: 'Galaxy S26', price: 9500, quantity: 3, minQuantity: 1, lowStock: false }
 const cable = { id: 2, name: 'USB-C Cable', price: 49.9, quantity: 10, minQuantity: 5, lowStock: false }
 const ahmed = { id: 7, name: 'Ahmed', email: 'ahmed@test.com', phone: null }
+const phones = { id: 3, name: 'Phones', productCount: 1 }
+const audio = { id: 4, name: 'Audio', productCount: 0 }
+const phoneInCategory = { ...phone, category: { id: 3, name: 'Phones' } }
 
 describe('products', () => {
   it('lets an admin create a product, showing the API validation errors under the fields', async () => {
     loggedInAs('ADMIN')
     const calls = mockApi({
       'GET /api/products': [200, page([phone])],
+      'GET /api/categories': [200, [phones]],
       'POST /api/products': [400, { errors: { price: 'must be greater than or equal to 0.00' } }],
     })
     renderApp('/products')
@@ -32,7 +36,45 @@ describe('products', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Create' }))
 
     expect(await within(dialog).findByText('must be greater than or equal to 0.00')).toBeInTheDocument()
-    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ name: 'Charger', price: 199, minQuantity: 0, quantity: 0 })
+    expect(calls.find((c) => c.method === 'POST')?.body)
+      .toEqual({ name: 'Charger', price: 199, minQuantity: 0, quantity: 0, categoryId: null })
+  })
+
+  it('files a new product in a category', async () => {
+    loggedInAs('ADMIN')
+    const calls = mockApi({
+      'GET /api/products': [200, page([phone])],
+      'GET /api/categories': [200, [phones, audio]],
+      'POST /api/products': [201, { ...phoneInCategory, id: 5, name: 'Redmi Note 15' }],
+    })
+    renderApp('/products')
+
+    await userEvent.click(await screen.findByRole('button', { name: 'New product' }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.type(within(dialog).getByLabelText('Name'), 'Redmi Note 15')
+    await userEvent.click(within(dialog).getByLabelText('Category', { selector: 'input' }))
+    await userEvent.click(await within(dialog).findByRole('option', { name: 'Phones' }))
+    await userEvent.type(within(dialog).getByLabelText('Price (MAD)'), '2899')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Create' }))
+
+    await waitFor(() => expect(calls.find((c) => c.method === 'POST')?.body)
+      .toEqual({ name: 'Redmi Note 15', price: 2899, minQuantity: 0, quantity: 0, categoryId: 3 }))
+  })
+
+  it('shows each product category and filters the list by category, in the address too', async () => {
+    loggedInAs('CASHIER')
+    const calls = mockApi({
+      'GET /api/products': [200, page([phoneInCategory])],
+      'GET /api/categories': [200, [phones, audio]],
+    })
+    const { router } = renderApp('/products')
+
+    expect(await screen.findByRole('cell', { name: 'Phones' })).toBeInTheDocument()
+    await userEvent.click(screen.getByLabelText('Category', { selector: 'input' }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Audio' }))
+
+    await waitFor(() => expect(router.state.location.search).toBe('?category=4'))
+    await waitFor(() => expect(calls.some((c) => c.url.startsWith('/api/products?') && c.url.includes('categoryId=4'))).toBe(true))
   })
 
   it('lets an admin restock a product', async () => {
@@ -144,6 +186,66 @@ describe('new sale', () => {
     await userEvent.click(await screen.findByRole('option', { name: /USB-C Cable/ }))
 
     expect(screen.getByRole('button', { name: 'Complete sale' })).toBeDisabled()
+  })
+})
+
+describe('categories', () => {
+  it('lets an admin add a category, showing a duplicate name under the field', async () => {
+    loggedInAs('ADMIN')
+    const calls = mockApi({
+      'GET /api/categories': [200, [phones]],
+      'POST /api/categories': [409, { error: "A category named 'phones' already exists" }],
+    })
+    renderApp('/categories')
+
+    await userEvent.click(await screen.findByRole('button', { name: 'New category' }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.type(within(dialog).getByLabelText('Name'), 'phones')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add category' }))
+
+    expect(await within(dialog).findByText("A category named 'phones' already exists")).toBeInTheDocument()
+    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ name: 'phones' })
+  })
+
+  it('asks before deleting a category, and keeps it when the API refuses', async () => {
+    loggedInAs('ADMIN')
+    const calls = mockApi({
+      'GET /api/categories': [200, [phones]],
+      'DELETE /api/categories/3': [409, { error: "Category 'Phones' cannot be deleted: it has 1 product(s)" }],
+    })
+    renderApp('/categories')
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete Phones' }))
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }))
+
+    await waitFor(() => expect(calls.some((c) => c.method === 'DELETE' && c.url === '/api/categories/3')).toBe(true))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('cell', { name: 'Phones' })).toBeInTheDocument()
+  })
+
+  it('opens the products of a category from its product count', async () => {
+    loggedInAs('ADMIN')
+    const calls = mockApi({
+      'GET /api/categories': [200, [phones]],
+      'GET /api/products': [200, page([phoneInCategory])],
+    })
+    const { router } = renderApp('/categories')
+
+    await userEvent.click(await screen.findByRole('link', { name: '1 product' }))
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/products'))
+    expect(router.state.location.search).toBe('?category=3')
+    await waitFor(() => expect(calls.some((c) => c.url.startsWith('/api/products?') && c.url.includes('categoryId=3'))).toBe(true))
+  })
+
+  it('keeps cashiers out of category management', async () => {
+    loggedInAs('CASHIER')
+    const calls = mockApi({ 'GET /api/products/low-stock': [200, page([])] })
+    const { router } = renderApp('/categories')
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+    expect(screen.queryByRole('link', { name: 'Categories' })).not.toBeInTheDocument()
+    expect(calls.some((c) => c.url.startsWith('/api/categories'))).toBe(false)
   })
 })
 

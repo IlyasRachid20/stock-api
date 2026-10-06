@@ -2,15 +2,18 @@ package com.ilyas.stockapi;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.ilyas.stockapi.entity.Category;
 import com.ilyas.stockapi.entity.Customer;
 import com.ilyas.stockapi.entity.Product;
 import com.ilyas.stockapi.entity.Sale;
 import com.ilyas.stockapi.entity.SaleItem;
+import com.ilyas.stockapi.repository.CategoryRepository;
 import com.ilyas.stockapi.repository.CustomerRepository;
 import com.ilyas.stockapi.repository.ProductRepository;
 import com.ilyas.stockapi.repository.SaleItemRepository;
@@ -53,6 +56,10 @@ class ReportTests {
 	@Autowired
 	private SaleItemRepository saleItemRepository;
 
+	@Autowired
+	private CategoryRepository categoryRepository;
+
+	// The phone is in the "Phones" category, the cable in none
 	// Sep 10 (local): Ahmed buys 1 phone (9500) + 2 cables (2 x 49.90)
 	// Sep 11 (local, 23:30 UTC on Sep 10): Sara buys 3 cables (3 x 49.90)
 	// Sep 12: an empty sale (no items): not counted
@@ -62,6 +69,9 @@ class ReportTests {
 		Customer ahmed = customer("Ahmed");
 		Customer sara = customer("Sara, \"VIP\"");
 		Product phone = product("Galaxy S26", "9500.00");
+		Category phones = new Category();
+		phones.setName("Phones");
+		phone.setCategory(categoryRepository.save(phones));
 		Product cable = product("USB-C Cable", "49.90");
 
 		Sale first = sale(ahmed, "2026-09-10T09:00:00Z");
@@ -110,6 +120,18 @@ class ReportTests {
 	}
 
 	@Test
+	void salesByCategoryPutProductsWithoutACategoryInUncategorized() throws Exception {
+		mockMvc.perform(get("/api/reports/sales-by-category?" + RANGE))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[*].name", contains("Phones", "Uncategorized")))
+				.andExpect(jsonPath("$[0].quantitySold").value(1))
+				.andExpect(jsonPath("$[0].revenue").value(9500.00))
+				.andExpect(jsonPath("$[1].categoryId").value(nullValue()))
+				.andExpect(jsonPath("$[1].quantitySold").value(5))
+				.andExpect(jsonPath("$[1].revenue").value(249.50));
+	}
+
+	@Test
 	void csvExportHasOneRowPerLineInLocalTimeAndEscapesValues() throws Exception {
 		String csv = mockMvc.perform(get("/api/reports/sales.csv?" + RANGE))
 				.andExpect(status().isOk())
@@ -117,10 +139,10 @@ class ReportTests {
 				.andReturn().getResponse().getContentAsString();
 
 		assertThat(csv.lines()).containsExactly(
-				"date,sale_id,customer,product,quantity,unit_price,line_total",
-				"2026-09-10 10:00:00," + saleIdAt("2026-09-10T09:00:00Z") + ",Ahmed,Galaxy S26,1,9500.00,9500.00",
-				"2026-09-10 10:00:00," + saleIdAt("2026-09-10T09:00:00Z") + ",Ahmed,USB-C Cable,2,49.90,99.80",
-				"2026-09-11 00:30:00," + saleIdAt("2026-09-10T23:30:00Z") + ",\"Sara, \"\"VIP\"\"\",USB-C Cable,3,49.90,149.70");
+				"date,sale_id,customer,product,category,quantity,unit_price,line_total",
+				"2026-09-10 10:00:00," + saleIdAt("2026-09-10T09:00:00Z") + ",Ahmed,Galaxy S26,Phones,1,9500.00,9500.00",
+				"2026-09-10 10:00:00," + saleIdAt("2026-09-10T09:00:00Z") + ",Ahmed,USB-C Cable,,2,49.90,99.80",
+				"2026-09-11 00:30:00," + saleIdAt("2026-09-10T23:30:00Z") + ",\"Sara, \"\"VIP\"\"\",USB-C Cable,,3,49.90,149.70");
 	}
 
 	@Test
@@ -158,6 +180,7 @@ class ReportTests {
 	void cashierCannotSeeReports() throws Exception {
 		mockMvc.perform(get("/api/reports/summary")).andExpect(status().isForbidden());
 		mockMvc.perform(get("/api/reports/sales.csv")).andExpect(status().isForbidden());
+		mockMvc.perform(get("/api/reports/sales-by-category")).andExpect(status().isForbidden());
 	}
 
 	private Customer customer(String name) {

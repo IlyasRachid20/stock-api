@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { AreaChart } from '@mantine/charts'
-import { Badge, Button, Card, Group, SegmentedControl, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
+import { Badge, Button, Card, Group, Progress, SegmentedControl, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
 import { IconDownload } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import { api, download } from '../api/client'
-import type { DailySales, Page, Product, SalesSummary, TopProduct } from '../api/types'
+import type { CategorySales, DailySales, Page, Product, SalesSummary, TopProduct } from '../api/types'
 import { useAuth } from '../auth/useAuth'
 import { QueryState } from '../components/QueryState'
 import { daysAgo, formatCompact, formatDay, formatInteger, formatMoney } from '../utils/format'
@@ -15,22 +15,35 @@ const PERIODS = [
   { label: '90 days', value: '90' },
 ]
 
+type Range = { from: string; to: string }
+
 export function DashboardPage() {
   const { isAdmin } = useAuth()
+  const [days, setDays] = useState('30')
+  const range = { from: daysAgo(Number(days) - 1), to: daysAgo(0) }
+
+  // Reports are admin-only in the API, so cashiers only see the low stock
+  if (!isAdmin) {
+    return (
+      <Stack>
+        <Title order={2}>Dashboard</Title>
+        <LowStock />
+      </Stack>
+    )
+  }
   return (
     <Stack>
       <Title order={2}>Dashboard</Title>
-      {isAdmin && <SalesReports />}
-      <LowStock />
+      <SalesReports days={days} onDaysChange={setDays} range={range} />
+      <SimpleGrid cols={{ base: 1, lg: 2 }}>
+        <SalesByCategory range={range} />
+        <LowStock />
+      </SimpleGrid>
     </Stack>
   )
 }
 
-// Reports are admin-only in the API, so cashiers don't see this part
-function SalesReports() {
-  const [days, setDays] = useState('30')
-  const range = { from: daysAgo(Number(days) - 1), to: daysAgo(0) }
-
+function SalesReports({ days, onDaysChange, range }: { days: string; onDaysChange: (days: string) => void; range: Range }) {
   const summary = useQuery({
     queryKey: ['reports', 'summary', range],
     queryFn: () => api<SalesSummary>('/api/reports/summary', { query: range }),
@@ -47,7 +60,7 @@ function SalesReports() {
   return (
     <Stack>
       <Group justify="space-between">
-        <SegmentedControl data={PERIODS} value={days} onChange={setDays} aria-label="Period" />
+        <SegmentedControl data={PERIODS} value={days} onChange={onDaysChange} aria-label="Period" />
         <Button variant="light" leftSection={<IconDownload size={16} />}
           onClick={() => download('/api/reports/sales.csv', range)}>
           Export CSV
@@ -104,6 +117,43 @@ function SalesReports() {
         </Card>
       </SimpleGrid>
     </Stack>
+  )
+}
+
+// Each category's share of the revenue, biggest first
+function SalesByCategory({ range }: { range: Range }) {
+  const byCategory = useQuery({
+    queryKey: ['reports', 'sales-by-category', range],
+    queryFn: () => api<CategorySales[]>('/api/reports/sales-by-category', { query: range }),
+  })
+  const total = (byCategory.data ?? []).reduce((sum, c) => sum + c.revenue, 0)
+
+  return (
+    <Card withBorder>
+      <Text fw={600} mb="sm">Revenue by category</Text>
+      <QueryState isPending={byCategory.isPending} error={byCategory.error}>
+        {byCategory.data?.length ? (
+          <Stack gap="md">
+            {byCategory.data.map((c) => {
+              const share = total > 0 ? Math.round((c.revenue / total) * 100) : 0
+              return (
+                <div key={c.categoryId ?? 'none'}>
+                  <Group justify="space-between" mb={4} wrap="nowrap">
+                    <Text size="sm">{c.name}</Text>
+                    <Text size="sm" fw={500}>
+                      {formatMoney(c.revenue)} <Text span size="xs" c="dimmed">· {share}%</Text>
+                    </Text>
+                  </Group>
+                  <Progress value={share} aria-label={`${c.name}: ${share}% of revenue`} />
+                </div>
+              )
+            })}
+          </Stack>
+        ) : (
+          <Text c="dimmed" size="sm">No sales in this period</Text>
+        )}
+      </QueryState>
+    </Card>
   )
 }
 
