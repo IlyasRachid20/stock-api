@@ -139,10 +139,10 @@ class ReportTests {
 				.andReturn().getResponse().getContentAsString();
 
 		assertThat(csv.lines()).containsExactly(
-				"date,sale_id,customer,product,category,quantity,unit_price,line_total",
-				"2026-09-10 10:00:00," + saleIdAt("2026-09-10T09:00:00Z") + ",Ahmed,Galaxy S26,Phones,1,9500.00,9500.00",
-				"2026-09-10 10:00:00," + saleIdAt("2026-09-10T09:00:00Z") + ",Ahmed,USB-C Cable,,2,49.90,99.80",
-				"2026-09-11 00:30:00," + saleIdAt("2026-09-10T23:30:00Z") + ",\"Sara, \"\"VIP\"\"\",USB-C Cable,,3,49.90,149.70");
+				"date,sale_id,customer,product,category,quantity,unit_price,line_total,channel",
+				"2026-09-10 10:00:00," + saleIdAt("2026-09-10T09:00:00Z") + ",Ahmed,Galaxy S26,Phones,1,9500.00,9500.00,STORE",
+				"2026-09-10 10:00:00," + saleIdAt("2026-09-10T09:00:00Z") + ",Ahmed,USB-C Cable,,2,49.90,99.80,STORE",
+				"2026-09-11 00:30:00," + saleIdAt("2026-09-10T23:30:00Z") + ",\"Sara, \"\"VIP\"\"\",USB-C Cable,,3,49.90,149.70,STORE");
 	}
 
 	@Test

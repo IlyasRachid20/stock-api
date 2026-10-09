@@ -24,6 +24,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ 
 const ProductsPage = lazy(() => import('./pages/ProductsPage').then((m) => ({ default: m.ProductsPage })))
 const StockHistoryPage = lazy(() => import('./pages/StockHistoryPage').then((m) => ({ default: m.StockHistoryPage })))
 const NewSalePage = lazy(() => import('./pages/NewSalePage').then((m) => ({ default: m.NewSalePage })))
+const OrdersPage = lazy(() => import('./pages/OrdersPage').then((m) => ({ default: m.OrdersPage })))
 const SalesPage = lazy(() => import('./pages/SalesPage').then((m) => ({ default: m.SalesPage })))
 const CategoriesPage = lazy(() => import('./pages/CategoriesPage').then((m) => ({ default: m.CategoriesPage })))
 const CustomersPage = lazy(() => import('./pages/CustomersPage').then((m) => ({ default: m.CustomersPage })))
@@ -58,6 +59,7 @@ export const routes = [
       { index: true, element: <DashboardPage /> },
       { path: 'sales/new', element: <NewSalePage /> },
       { path: 'sales', element: <SalesPage /> },
+      { path: 'orders', element: <OrdersPage /> },
       { path: 'products', element: <ProductsPage /> },
       { path: 'categories', element: <RequireAuth adminOnly><CategoriesPage /></RequireAuth> },
       { path: 'customers', element: <CustomersPage /> },

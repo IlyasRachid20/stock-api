@@ -89,6 +89,13 @@ class RoleAccessTests {
 		mockMvc.perform(get("/api/sales")).andExpect(status().isOk());
 		mockMvc.perform(get("/api/sale-items")).andExpect(status().isOk());
 		mockMvc.perform(get("/api/categories")).andExpect(status().isOk());
+		mockMvc.perform(get("/api/orders")).andExpect(status().isOk());
+	}
+
+	@Test
+	void cashierHandlesOnlineOrders() throws Exception {
+		// Allowed: the request reaches the controller, which doesn't know this order
+		mockMvc.perform(json(post("/api/orders/999999/status"), "{\"status\":\"CONFIRMED\"}")).andExpect(status().isNotFound());
 	}
 
 	@Test

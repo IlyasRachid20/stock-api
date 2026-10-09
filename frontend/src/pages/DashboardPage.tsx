@@ -70,7 +70,8 @@ function SalesReports({ days, onDaysChange, range }: { days: string; onDaysChang
       <QueryState isPending={summary.isPending} error={summary.error}>
         {summary.data && (
           <SimpleGrid cols={{ base: 2, md: 4 }}>
-            <Kpi label="Revenue" value={formatMoney(summary.data.revenue)} />
+            <Kpi label="Revenue" value={formatMoney(summary.data.revenue)}
+              hint={`Online: ${formatMoney(summary.data.onlineRevenue)} (${summary.data.onlineSalesCount} orders delivered)`} />
             <Kpi label="Sales" value={formatInteger(summary.data.salesCount)} />
             <Kpi label="Items sold" value={formatInteger(summary.data.itemsSold)} />
             <Kpi label="Average sale" value={formatMoney(summary.data.averageSale)} />
@@ -157,11 +158,12 @@ function SalesByCategory({ range }: { range: Range }) {
   )
 }
 
-function Kpi({ label, value }: { label: string; value: string }) {
+function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <Card withBorder>
       <Text size="sm" c="dimmed">{label}</Text>
       <Text fw={700} fz="xl">{value}</Text>
+      {hint && <Text size="xs" c="dimmed">{hint}</Text>}
     </Card>
   )
 }

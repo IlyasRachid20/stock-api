@@ -1,8 +1,11 @@
 import { Suspense } from 'react'
 import { AppShell, Badge, Burger, Button, Center, Group, Loader, NavLink, Text } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
-import { IconBox, IconBuildingStore, IconCashRegister, IconCategory, IconGauge, IconHistory, IconLogout, IconReceipt, IconUserShield, IconUsers } from '@tabler/icons-react'
+import { useQuery } from '@tanstack/react-query'
+import { IconBox, IconBuildingStore, IconCashRegister, IconCategory, IconGauge, IconTruckDelivery, IconHistory, IconLogout, IconReceipt, IconUserShield, IconUsers } from '@tabler/icons-react'
 import { Link, Outlet, useLocation } from 'react-router'
+import { api } from '../api/client'
+import type { OrderStatus } from '../api/types'
 import { useAuth } from '../auth/useAuth'
 import { Logo } from '../components/Logo'
 
@@ -10,6 +13,7 @@ const links = [
   { to: '/admin', label: 'Dashboard', icon: IconGauge },
   { to: '/admin/sales/new', label: 'New sale', icon: IconCashRegister },
   { to: '/admin/sales', label: 'Sales', icon: IconReceipt },
+  { to: '/admin/orders', label: 'Online orders', icon: IconTruckDelivery },
   { to: '/admin/products', label: 'Products', icon: IconBox },
   { to: '/admin/categories', label: 'Categories', icon: IconCategory, adminOnly: true },
   { to: '/admin/customers', label: 'Customers', icon: IconUsers },
@@ -21,6 +25,13 @@ export function AppLayout() {
   const [opened, { toggle, close }] = useDisclosure()
   const { session, isAdmin, logout } = useAuth()
   const { pathname } = useLocation()
+  // Online orders waiting for a call, checked every minute
+  const counts = useQuery({
+    queryKey: ['orders', 'counts'],
+    queryFn: () => api<Partial<Record<OrderStatus, number>>>('/api/orders/counts'),
+    refetchInterval: 60_000,
+  })
+  const toConfirm = counts.data?.NEW ?? 0
 
   return (
     <AppShell
@@ -55,6 +66,8 @@ export function AppLayout() {
             to={to}
             label={label}
             leftSection={<Icon size={18} />}
+            rightSection={to === '/admin/orders' && toConfirm > 0
+              ? <Badge size="sm" color="orange" circle aria-label={`${toConfirm} to confirm`}>{toConfirm}</Badge> : null}
             active={to === '/admin' || to === '/admin/sales' ? pathname === to : pathname.startsWith(to)}
             onClick={close}
           />

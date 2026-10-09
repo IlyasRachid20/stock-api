@@ -39,7 +39,7 @@ class ResponseShapeTests {
 		expectFields("/api/customers/" + customerId, "$", "id", "name", "email", "phone");
 		expectFields("/api/products/" + productId, "$", "id", "name", "description", "category", "price", "previousPrice", "quantity", "minQuantity", "lowStock", "published", "images");
 		expectFields("/api/sale-items/" + itemId, "$", "id", "saleId", "product", "quantity", "unitPrice", "lineTotal");
-		expectFields("/api/sales/" + saleId, "$", "id", "customer", "saleDate", "items", "total");
+		expectFields("/api/sales/" + saleId, "$", "id", "customer", "saleDate", "items", "total", "channel", "status", "orderNumber");
 		expectFields("/api/sales/" + saleId, "$.customer", "id", "name");
 		expectFields("/api/sales/" + saleId, "$.items[0].product", "id", "name");
 
